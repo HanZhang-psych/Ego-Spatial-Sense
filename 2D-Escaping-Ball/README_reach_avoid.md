@@ -1,0 +1,114 @@
+# Goal-Directed Reach-Avoid Extension
+
+The original escaping-ball task tests only *reactive* collision avoidance — the ego
+ball has no destination, so the goal component of the ego state `s_e` is degenerate
+("survive"), symmetric in all directions. Ego spatial sense, however, is defined as a
+spatial attention field `F(q | s_e)` generated a priori from the ego's own state **and
+task/goal** (top-down attention). This extension adds a minimal sandbox that makes the
+goal non-trivial: the ego must **reach a destination while avoiding the moving balls**.
+
+It stays a REACTIVE, single-step spatial-pressure benchmark: an open arena with a
+destination and moving balls — no corridors, dead-ends or path planning.
+
+`evaluate.py` and the original models/data are untouched.
+
+## Task
+
+Same arena, LiDAR, and ball dynamics as `evaluate.py`, plus a goal:
+
+- A goal position is sampled at least 140 px from the walls and 250 px from the ego.
+- The ego "reaches" the goal within 30 px; a new goal then spawns (continuous
+  throughput). With `--single_goal` the episode instead ends at the first goal.
+- Collisions do **not** end evaluation runs; collision *events* are counted
+  (an overlap lasting several frames counts once).
+- **Primary metric: goals-reached-per-minute vs. collisions-per-minute** — a
+  Pareto trade-off. (Single-shot form: steps-to-destination + collisions.)
+
+## Observation & model
+
+The observation is the usual two concatenated scans plus the relative goal vector
+(pixels): `prev_scan(360) | scan(360) | goal_dx, goal_dy` → 722 features. This changes
+the input dimension, so the original 720-input checkpoints cannot be reused for the
+goal-conditioned agent; `pretrained/goal_es2.pth` is trained from scratch.
+
+`model/goal_es2.py` (`GoalEs2Model`) keeps the ES2 `SpatialSenseBlock` intact for the
+obstacle field and adds a top-down goal field: per-ray alignment
+`cos(theta_i - goal_bearing)` scaled by a learned gain conditioned on goal distance.
+The two fields are summed into a single attention field (asymmetric toward the goal
+sector, inspectable via `compute_fields`) which the usual action layers map to
+`(fx, fy)`.
+
+## Expert
+
+`expert_goal.py` extends the potential-field expert of `expert.py` with the textbook
+attractive term: constant-magnitude pull toward the goal (tapered near the goal),
+on top of the unchanged inverse-square repulsion from every LiDAR ray. It writes
+demonstrations to `dataset/data_goal.csv` with columns
+`fx, fy, scan_0..359, goal_dx, goal_dy, episode` (the episode id keeps the dataloader
+from pairing frames across resets).
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| `reach_avoid_common.py` | Shared env: balls, LiDAR, goal sampling, expert policy, collision-event counting |
+| `expert_goal.py` | Goal-directed expert; generates `dataset/data_goal.csv` |
+| `dataset/dataloader_goal.py` | Goal-augmented dataset (episode-boundary aware) |
+| `model/goal_es2.py` | `GoalEs2Model` (722-input goal-conditioned ES2) |
+| `train_goal_es2.py` | Imitation training (same alternating-k schedule as `train_es2.py`) |
+| `evaluate_reach_avoid.py` | Closed-loop evaluation, multi-seed, Pareto metrics |
+| `goal_swap_probe.py` | Goal-swap diagnostic (see below) |
+
+## Reproduce
+
+```bash
+# 1. Generate demonstrations (headless, ~1 min)
+python expert_goal.py --num_episodes 20 --max_steps_per_episode 3000
+
+# 2. Train the goal-conditioned model (CPU is fine)
+python train_goal_es2.py --device cpu
+
+# 3. Evaluate: goal agent vs. reactive baseline in the same reach-avoid env
+python evaluate_reach_avoid.py --model_path pretrained/goal_es2.pth --device cpu
+python evaluate_reach_avoid.py --model_path pretrained/es2.pth --device cpu
+
+# watch it (draws the goal in green)
+python evaluate_reach_avoid.py --model_path pretrained/goal_es2.pth --device cpu --num_seeds 1 --render
+
+# 4. Goal-swap diagnostic (after training)
+python goal_swap_probe.py --model_path pretrained/goal_es2.pth --device cpu
+python goal_swap_probe.py --model_path pretrained/es2.pth --device cpu   # control
+```
+
+The baseline `es2.pth`/`mlp.pth`/`transformer.pth` models run in the same environment
+but never see the goal — they are the reactive frontier anchor (near-zero goals/min,
+low collisions/min). The claim to verify is that the goal-directed agent **dominates
+the frontier** (large goals/min at comparable collisions/min), not that it merely
+survives.
+
+`evaluate_reach_avoid.py` also reports `field_asym` for the goal model: the mean
+attention-field difference between rays within ±60° of the goal bearing and rays
+pointing away — nonzero means the visualizable field is asymmetric toward the goal
+sector, as the top-down attention story predicts.
+
+## Goal-swap diagnostic (`goal_swap_probe.py`)
+
+A causal ablation verifying the agent actually *uses* the goal input, in two forms:
+
+- **Failure form** — feed a goal different from the scored one (`opposite`: mirrored
+  through the arena center; `random`: independent, resampled when reached) and score
+  against the TRUE goal. Sensitivity = true-goals/min(correct) − true-goals/min(wrong),
+  reported as a continuous effect size. Goal-conditioned agent: large gap. Goal-blind
+  agent: ~zero gap. Wrong goals are mirrored/random and averaged over several seeds so
+  an accidental alignment with the true goal cannot masquerade as goal-blindness.
+- **Positive form (stronger)** — score against the FED goal across many randomly
+  assigned goals: a goal-conditioned agent reaches whatever goal it is handed; a
+  goal-blind one reaches fed goals only at chance rate.
+- **Entanglement check** — collisions/min per condition. The goal input should steer
+  *direction*, not avoidance, so collision rates should stay comparable across
+  conditions; if avoidance also collapses under a wrong goal, that entanglement is
+  itself a finding.
+
+## Results (5 seeds × 6000 steps, CPU)
+
+See `RESULTS_reach_avoid.md` (generated by the runs above).
