@@ -44,6 +44,7 @@ suppression/priming analyses.
 | File | Purpose |
 | --- | --- |
 | `pool_data.py` | 12 fixation reports → `dataset/saccades.csv` (one row per scoreable saccade, with per-item distances from the current fixation) + `dataset/events.csv` (per-trial target/singleton locations driving the traces) |
+| `front_end.py` | Pixel front-end (visual LiDAR): display image -> Itti & Koch feature/salience maps -> ray scan from the current fixation; demo figure in `figures/front_end_demo.png` |
 | `model.py` | `SearchEs2Model`: tied-k sigmoid envelope x channel gains + trace injection → field → softmax |
 | `fit_pooled.py` | Pooled MLE (Adam), null model without traces, diagnostics, `results_fit.json` |
 

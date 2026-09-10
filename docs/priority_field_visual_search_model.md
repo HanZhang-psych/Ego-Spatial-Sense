@@ -149,10 +149,24 @@ learn, remain an extension requiring no structural change.
 
 ## 3. Search instantiation, v1 details
 
-- **Front-end**: feature channels kept un-collapsed (the template needs
-  channels to weight); per-dimension local contrast summed into a salience
-  channel (what task-independent capture rides on — its default weight w_s
-  is the Theeuwes/Folk dial). No transient channel (§7).
+- **Front-end (v2 revision: no shortcut — pixels in).** The model
+  receives the rendered display, not role flags. A fixed (unfitted)
+  Itti & Koch-style perception module — the analog of the agent's LiDAR
+  — computes color-opponency (R–G, B–Y) and intensity feature maps and
+  their center-surround contrast, combined into a salience map. All
+  maps are sampled along rays from the *current fixation* (a visual
+  LiDAR), so eccentricity is implicit in the sensory signal and
+  re-centers after every saccade, exactly as the agent's scan does.
+  Top-down gains apply to *feature channels* (upweight the template
+  color, downweight the distractor color) plus a separate gain w_s on
+  the salience channel — which makes rejection-template vs.
+  salience-suppression accounts, and singleton-detection mode (w_s>0),
+  distinct fittable weights (separable across studies with different
+  colors, and via Stilwell 2023's salience manipulation; confounded
+  within any single fixed-color study). Remaining stated shortcut: the
+  shape-defined target requires a form-match channel that color /
+  intensity / orientation maps do not cleanly deliver; it stays
+  analytic. No transient channel (§7).
 - **Network form (mirrors `goal_es2.py`)**: the display is rendered as ray
   maps over the search ring, one per channel; each channel passes through
   its own small learned gain block (the analog of `goal_gain`), producing
