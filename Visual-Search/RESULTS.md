@@ -112,6 +112,35 @@ because simulated searches always run to the target or 5 saccades,
 while real trials are censored by the response deadline and the end of
 the fixation report — a design difference, not a recovery failure.
 
+## Generated predictions: high-probability distractor location
+(predict_hp_distractor.py — Wang & Theeuwes-style design, simulated
+from the fitted weights; no new parameters)
+
+Design: singleton present 70%; when present, at one HP location 65%
+(LP locations 7% each); 400 biased + 200 unbiased trials.
+
+1. **Location-specific suppression**: first saccades to the singleton
+   at the HP location 3.2% vs. 4.6% at LP locations (~30% relative
+   reduction) at asymptote.
+2. **Source-blind spillover (architectural signature)**: targets
+   appearing at the HP location are selected on 43.1% of first
+   saccades vs. 50.7% elsewhere — a 7.5-point target cost at the
+   suppressed location. The single signed field *forces* this
+   prediction: the trace suppresses a location, and the readout cannot
+   see who wrote the negative value. The human paradigm's hallmark
+   finding (impaired target processing at the suppressed location)
+   falls out with no added assumptions.
+3. **Build-up is fast**: at eta_D = 0.17 per exposure, suppression
+   reaches ~asymptote within ~6 HP-singleton appearances (~13 trials
+   at these rates) — already at ceiling in the first 25-trial bin.
+4. **Extinction is equally fast — a falsifiable discrepancy**: the
+   former-HP location returns to baseline within ~25 unbiased trials.
+   Human reports of much longer-lived statistical-learning effects
+   would contradict the single fast trace as fitted (eta_D estimated
+   mostly from short-range intertrial structure in roving designs) and
+   would argue for a second, slower trace timescale — a concrete,
+   pre-registrable model comparison for future data.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
