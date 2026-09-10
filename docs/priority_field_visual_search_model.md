@@ -113,14 +113,11 @@ uncertainty on pooled estimates via bootstrap over subjects.
   maps over the search ring, one per channel; each channel passes through
   its own small learned gain block (the analog of `goal_gain`), producing
   signed contributions summed into one field over rays. History traces are
-  runtime state injected through the same machinery. The salience gain
-  carries an *exposure* dependence (singletons seen so far), fitted from
-  positions — the first-encounters capture→suppression curve; optionally
-  unified as a third leaky trace, feature-indexed (η_F, β_F), so one
-  learning rule appears three times (target locations, distractor
-  locations, distractor features). The pre-onset spatial prior is the
-  network's field with history + task set only (no display) — the ES2
-  pure-field probe.
+  runtime state injected through the same machinery. Both top-down gains
+  are static single parameters (g_T, g_S): they encode the task set —
+  attend green, willfully ignore red — not learning (§7). The pre-onset
+  spatial prior is the network's field with history + task set only (no
+  display) — the ES2 pure-field probe.
 - **Readout**: conditional logit — P(first saccade → item i) = softmax_i
   F(i)/τ, with τ fixed as the unit of measurement. The bare field →
   softmax, exactly parallel to the agent's field → action head: no motor
@@ -306,6 +303,16 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 - **No individual differences (scope decision).** One population-level
   fit; no per-subject parameter layer. Uncertainty on pooled estimates
   via bootstrap over subjects.
+- **Top-down gains are static — no learning curve inside g_S (scope
+  decision).** g_T and g_S each encode a willful task set (attend green,
+  ignore red): one parameter apiece, constant across the experiment.
+  Building the first-encounters capture→suppression curve into g_S would
+  confound the goal-driven set with selection history — acquisition
+  effects belong to history mechanisms (traces), never to the top-down
+  gains. Consequence: fits use experimental blocks (stable set; practice
+  excluded, as in the source studies), and the practice-block learning
+  curve is outside the fitted model's scope (a possible feature-indexed
+  history-trace extension, kept strictly separate from g_S).
 - **No readout add-ons (scope decision).** No motor-repetition covariate,
   no lapse rate: the readout is the bare field → softmax, exactly
   parallel to the agent's field → action head. Cost accepted: the
@@ -343,13 +350,12 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 
 ## 9. Parameters
 
-**Trained (one pooled fit, positions only):** ~10 numbers doing all the
+**Trained (one pooled fit, positions only):** 6 numbers doing all the
 work, behavior-cloned by MLE on first-saccade destinations across all
 subjects and studies —
-g_T (template gain); g_S with its exposure dependence (2–3 numbers:
-initial capture, suppressed asymptote, change rate — or, unified, a
-feature-indexed trace η_F, β_F); β_tgt, β_dist, η_tgt, η_dist (location
-traces). τ fixed as unit. No latency terms, no per-subject layer, no
+g_T (template gain, static); g_S (salience/rejection gain, static, one
+number — task set, not learning, §7); β_tgt, β_dist, η_tgt, η_dist
+(location traces). τ fixed as unit. No latency terms, no per-subject layer, no
 motor-repetition or lapse terms — the readout is the bare field →
 softmax, as in the agent. σ_env (the attention
 window) is architecturally present but task-silenced for first saccades
