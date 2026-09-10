@@ -321,6 +321,32 @@ overshoot) are specific and named, and all point at the same missing
 ingredient family: saccade-index-dependent guidance (a gain that
 grows as search proceeds) and/or the scoped-out motor-repetition term.
 
+## Reproduction: Wang & Theeuwes distractor-location probability cueing
+(reproduce_wang_theeuwes.py; final model, no refitting)
+
+HP-location design (singleton 65% at one location when present),
+first saccades, learned regime:
+
+1. **Less capture at the HP location**: 4.73% vs 6.65% at LP (~29%
+   relative reduction) — reproduced.
+2. **Impaired target selection at the HP location**: 46.0% vs 50.1%
+   elsewhere — reproduced, from the same trace value (source-blind
+   spillover).
+3. **Spatial gradient around the HP location**: model is FLAT (6.66 /
+   6.76 / 6.41 at ring distances 1/2/3) where W&T observed graded
+   spillover to neighbors — a committed divergence: the fitted traces
+   are slot-indexed with no spatial spread. The missing ingredient is
+   the trace kernel width sigma_h — exactly the component the
+   agent-side experiments already identified and implemented (the
+   spread-matched trace), specified in the model doc but not yet in
+   the search fits. The same parameter fixes the same limitation in
+   both domains.
+
+Framing caveat: W&T ran a capture regime (singleton-detection mode);
+our weights come from suppression paradigms, so absolute capture
+levels are not comparable — the reproduced content is the location
+modulation, its spillover to targets, and (negatively) the gradient.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
