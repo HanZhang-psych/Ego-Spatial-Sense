@@ -90,7 +90,7 @@ follow the eyes, history effects stay glued to display locations.
 | gain(q): envelope | Functional viewing field around fixation (graded, eccentricity-dependent) | Per-ray sensing envelope k (from ego dynamics/sensing range) |
 | gain(q): history h | Presence-driven leaky traces of target (+) and distractor (−) locations | Presence-driven leaky traces of goal (+) and threat (−) bearings (§6) |
 | Readout | Softmax sample → first saccade | Softmax expectation → (fx, fy) each step |
-| Parameterization | Same ES2-style gain blocks, behavior-cloned from ~700k pooled human first saccades + a thin per-subject scalar layer | Learned network weights, behavior-cloned from expert demonstrations |
+| Parameterization | Same ES2-style gain blocks, behavior-cloned from ~700k pooled human first saccades (one population-level fit) | Learned network weights, behavior-cloned from expert demonstrations |
 
 Note the last row's symmetry: both instantiations are the *same structured
 network* — channelized gain blocks writing into one signed field — trained
@@ -99,9 +99,9 @@ demonstrators on the search side and the potential-field expert on the
 action side. The spatial prior is not hand-parameterized: it is **derived
 from the trained network by probing** (feed history state and task set
 with no display), exactly as the original ES2 paper derives the pure ego
-spatial field from the trained agent. Per-subject measurement (personal
-channel gains, η, β) is carried by a thin scalar layer on top of the
-pooled network (§7).
+spatial field from the trained agent. The fit is population-level only (no
+per-subject layer — individual differences are out of scope, §7);
+uncertainty on pooled estimates via bootstrap over subjects.
 
 ## 3. Search instantiation, v1 details
 
@@ -113,20 +113,21 @@ pooled network (§7).
   maps over the search ring, one per channel; each channel passes through
   its own small learned gain block (the analog of `goal_gain`), producing
   signed contributions summed into one field over rays. History traces are
-  runtime state injected through the same machinery. Saccade latency
-  enters the gain blocks as an input, so the guidance time course
-  (delayed-guidance vs. rapid-disengagement) is *learned from data* and
-  read off the trained blocks, not assumed. The pre-onset spatial prior is
-  the network's field with history + task set only (no display) — the
-  ES2 pure-field probe.
+  runtime state injected through the same machinery. The salience gain
+  carries an *exposure* dependence (singletons seen so far), fitted from
+  positions — the first-encounters capture→suppression curve; optionally
+  unified as a third leaky trace, feature-indexed (η_F, β_F), so one
+  learning rule appears three times (target locations, distractor
+  locations, distractor features). The pre-onset spatial prior is the
+  network's field with history + task set only (no display) — the ES2
+  pure-field probe.
 - **Readout**: conditional logit — P(first saccade → item i) = softmax_i
-  F(i)/τ, with τ fixed as the unit of measurement. Motor repetition
-  (position priming of the response) is a lagged covariate in the readout,
-  quarantined from the history traces. Latency is a conditioning covariate
-  only (fast/slow split interacting with source weights); v1 does not
-  generate latencies. Averaging (between-item) landings need pre-registered
-  assignment/exclusion rules.
-- **Excluded from v1**: latency generation, multi-fixation search,
+  F(i)/τ, with τ fixed as the unit of measurement. The bare field →
+  softmax, exactly parallel to the agent's field → action head: no motor
+  covariates, no lapse parameter (scope decision, §7). Positions only:
+  latency is neither generated nor used as a covariate (§7). Averaging
+  (between-item) landings need pre-registered assignment/exclusion rules.
+- **Excluded from v1**: saccade latency (entirely), multi-fixation search,
   inhibition of return, foveal verification. The v2 accumulator readout
   (leaky competing accumulators over a motor map; threshold crossing =
   latency, activity-weighted centroid = endpoint; recovers the global
@@ -143,8 +144,10 @@ h_{t+1}(q) = (1 − η) · h_t(q) + η · e_t(q)
 - **Presence-driven (design decision):** e_t(q) marks that a target (+) or
   distractor (−) *appeared* at q — registration by the front-end,
   independent of where the saccade went. Update path: front-end → traces.
-  No saccade → trace feedback; the saccade's only history effect is motor
-  repetition, which lives in the readout.
+  No saccade → trace feedback: where the eyes went has no effect on the
+  traces, or on anything else (no motor-repetition term — scope decision,
+  §7; the target-location trace will absorb any motor-repetition variance,
+  a stated caveat on β_tgt).
 - Two traces with separate (η, β); the single signed trace (equal rates and
   weights) is the nested restriction, testable by model comparison. β
   (weight in gain(q)) is separate from η (accrual rate): rate vs. asymptote.
@@ -163,8 +166,9 @@ hybrid update rules, which remain in the family as alternatives.
 
 **Fitting:** η, β, kernel width identified from trial-order dynamics of
 first-saccade choices (acquisition curves; lagged kernels decaying as
-(1−η)^k; reversal transients). Hierarchical fits make cross-task η
-contrasts ("task A induces faster buildup") posterior statements. Public
+(1−η)^k; reversal transients). One pooled fit per task; cross-task η
+contrasts ("task A induces faster buildup") compare pooled estimates
+across tasks (bootstrap over subjects for uncertainty). Public
 trial-level datasets (OSF: Gaspelin, Theeuwes / van Moorselaar labs)
 suffice; parameter recovery on synthetic data precedes any human fit.
 
@@ -295,8 +299,18 @@ head expresses it (positive); its payoff sign depends on target uncertainty
   a re-weighting of something already present.
 - **Presence-driven trace updating** (not selection-gated); falsifiers in §4.
 - **Presence sourced from contrast maps** (weak commitment; see §4).
-- **v1 models endpoints only**; latency generation deferred to the v2
-  accumulator readout.
+- **Positions only (scope decision).** Saccade latency is entirely out of
+  scope — neither generated nor used as a covariate or gain input. The
+  model explains *where* first saccades go, never *when*. (Latency
+  generation would be the v2 accumulator readout, deferred.)
+- **No individual differences (scope decision).** One population-level
+  fit; no per-subject parameter layer. Uncertainty on pooled estimates
+  via bootstrap over subjects.
+- **No readout add-ons (scope decision).** No motor-repetition covariate,
+  no lapse rate: the readout is the bare field → softmax, exactly
+  parallel to the agent's field → action head. Cost accepted: the
+  target-location trace absorbs any motor-repetition variance, and
+  stray saccades load onto τ-scaled noise rather than a lapse term.
 - **Task-silencing principle**: the full model is the union of sources; a
   task silences sources through input structure (no differential
   transients under placeholders; flat statistics → flat traces).
@@ -307,11 +321,10 @@ head expresses it (positive); its payoff sign depends on target uncertainty
   — rather than a hand-parameterized field. This keeps the search model
   maximally close to ES2 and lets the spatial prior be *derived from the
   trained network* (pre-onset probe), as the original paper derives the
-  pure ego spatial field. Per-subject measurement survives as a thin
-  scalar layer (personal channel multipliers, η, β) plus channel probes
-  (target-enhancement vs. distractor-suppression read from per-channel
-  field contributions, as `compute_fields` does in the agent). The
-  earlier all-scalar parameterization is retained as a comparison model.
+  pure ego spatial field. Enhancement vs. suppression is read from
+  channel probes (per-channel field contributions, as `compute_fields`
+  does in the agent). The earlier all-scalar parameterization is
+  retained as a comparison model.
 
 ## 8. Supporting evidence from this repo's simulations
 
@@ -330,15 +343,18 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 
 ## 9. Parameters
 
-**Trained (pooled):** the gain-block weights (small network, order 10²–10³
-parameters), behavior-cloned by MLE on first-saccade destinations across
-subjects and studies.
-
-**Fitted (per subject, thin scalar layer):** channel multipliers on the
-template and salience contributions (personal g_T, g_S), η_tgt, η_dist,
-β_tgt, β_dist, w_rep (+ decay), ε (lapse). τ fixed as unit. σ_env is
-task-silenced for first saccades on an iso-eccentric ring (envelope
-constant across items) and re-enters for saccades 2+.
+**Trained (one pooled fit, positions only):** ~10 numbers doing all the
+work, behavior-cloned by MLE on first-saccade destinations across all
+subjects and studies —
+g_T (template gain); g_S with its exposure dependence (2–3 numbers:
+initial capture, suppressed asymptote, change rate — or, unified, a
+feature-indexed trace η_F, β_F); β_tgt, β_dist, η_tgt, η_dist (location
+traces). τ fixed as unit. No latency terms, no per-subject layer, no
+motor-repetition or lapse terms — the readout is the bare field →
+softmax, as in the agent. σ_env (the attention
+window) is architecturally present but task-silenced for first saccades
+on an iso-eccentric ring (envelope constant across items); it becomes
+fittable only for saccades 2+.
 
 **State, not parameters:** the traces h(q) — deterministic given the trial
 sequence and η; estimated never, generated always.
