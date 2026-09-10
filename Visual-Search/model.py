@@ -18,7 +18,11 @@ where the task pins an input (docs/priority_field_visual_search_model.md):
   eta_T, eta_D learned; expression weights beta_T, beta_D signed.
   Updated every trial: h <- (1-eta)*h + eta*e (e marks where a target /
   singleton appeared; distractor e = 0 on singleton-absent trials).
-- No latency terms, no IoR term, no lapse, no per-subject parameters.
+- g_I: optional inhibition-of-return penalty on already-visited items
+  (one weight, frozen at 0 in the base model) — added as a model
+  comparison after the pre-registered refixation diagnostic failed
+  (observed 1.2% revisits vs. 6.3% predicted without it).
+- No latency terms, no lapse, no per-subject parameters.
 """
 
 import torch
@@ -37,6 +41,7 @@ class SearchEs2Model(nn.Module):
         self.beta_D = nn.Parameter(torch.tensor(-0.1))     # distractor-trace weight
         self.raw_eta_T = nn.Parameter(torch.tensor(0.0))   # trace rates (sigmoid)
         self.raw_eta_D = nn.Parameter(torch.tensor(0.0))
+        self.g_I = nn.Parameter(torch.tensor(0.0))         # IoR penalty (0 = off)
 
     @property
     def k(self):
@@ -72,18 +77,22 @@ class SearchEs2Model(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, d, isT, isS, hT, hD):
+    def field(self, d, isT, isS, hT, hD, visited=None):
         stim = 1.0 + self.g_T * isT + self.g_S * isS
-        return self.envelope(d) * stim + self.beta_T * hT + self.beta_D * hD
+        F = self.envelope(d) * stim + self.beta_T * hT + self.beta_D * hD
+        if visited is not None:
+            F = F + self.g_I * visited.float()
+        return F
 
-    def log_prob(self, d, isT, isS, hT, hD, valid, choice):
+    def log_prob(self, d, isT, isS, hT, hD, valid, choice, visited=None):
         """valid: [N, NLOC] choice-set mask (setsize + fixated-item
         exclusion); choice: [N] index of the landed item."""
-        F = self.field(d, isT, isS, hT, hD)
+        F = self.field(d, isT, isS, hT, hD, visited)
         F = F.masked_fill(~valid, -1e9)
         return torch.log_softmax(F, dim=1).gather(1, choice[:, None]).squeeze(1)
 
     def named_values(self):
         return dict(k=self.k.item(), g_T=self.g_T.item(), g_S=self.g_S.item(),
                     beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
-                    eta_T=self.eta_T.item(), eta_D=self.eta_D.item())
+                    eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
+                    g_I=self.g_I.item())

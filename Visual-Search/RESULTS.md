@@ -1,57 +1,64 @@
 # Pooled fit results (v1, run 2026-09-10)
 
 Data: 217,595 saccades (indices 1–5; 124,834 first saccades), 333
-subjects, 11 studies; color-singleton present vs. absent trials only;
-practice conditions the traces but is not scored. `results_fit.json`.
+subjects, 11 studies; color-singleton present vs. absent trials only
+(onset/motion-distractor trials excluded entirely); practice conditions
+the traces but is not scored. Evaluation: subject-level 80/20 split
+(267 train / 66 held-out subjects, seed 0) — held-out numbers are on
+people the model never saw. `results_fit.json`.
 
-## Estimates (7 pooled weights)
+## Nested model comparison (held-out NLL per saccade)
+
+| Model | free weights | train | **test** | Δtest total (vs prev) |
+| --- | --- | --- | --- | --- |
+| null (gains + envelope only) | 3 | 1.3739 | 1.3665 | — |
+| + location traces | 7 | 1.2892 | **1.2737** | **3,995** (4 wts) |
+| + IoR (visited-item penalty) | 8 | 1.2722 | **1.2565** | **743** (1 wt) |
+
+Both additions earn their keep on held-out subjects, not just in-sample.
+
+## Estimates (traces + IoR model)
 
 | Weight | Estimate | Reading |
 | --- | --- | --- |
-| g_T | **+3.20** | template gain: attend the target's features |
-| g_S | **−1.85** | salience gain: the singleton is written *below* a plain nontarget — suppression as negative writing |
-| beta_T | **+1.76** | prior target locations attract (strongly) |
-| beta_D | **−0.24** | prior singleton locations repel (weaker, reliably signed) |
-| eta_T | **0.62** | target-location history is heavily recency-weighted (~lag 1–2) |
-| eta_D | **0.17** | singleton-location history accrues ~4x slower — a slower suppressive trace |
-| k | 0.24 | envelope falloff ≈ flat (see caveat) |
+| g_T | **+3.01** | template gain: attend the target's features |
+| g_S | **−1.81** | salience gain: singleton written *below* a plain nontarget — suppression as negative writing |
+| beta_T / eta_T | **+1.87 / 0.63** | strong, fast-turnover attraction to prior target locations |
+| beta_D / eta_D | **−0.27 / 0.17** | weaker, ~4x slower suppressive trace on prior singleton locations |
+| g_I | **−2.01** | already-visited items are strongly penalized |
+| k | 0.41 | envelope falloff shallow (see caveat) |
 
-Trace model vs. no-trace null: **ΔNLL = 18,788** for 4 extra weights
-(NLL/saccade 1.286 vs. 1.372) — selection history is a first-order
-component of saccade choice, not a correction term.
+Estimates are stable across the with/without-IoR variants (g_T 3.18 vs
+3.01, g_S −1.81 both, β/η essentially unchanged) — the IoR weight
+absorbs refixation structure without disturbing the suppression or
+history story.
 
-## Model vs. observed (first saccades, singleton present)
+## Model vs. observed, held-out subjects
 
-| Destination | Observed | Model |
+First saccades, singleton present:
+
+| Destination | Observed | Model (traces+IoR) |
 | --- | --- | --- |
-| target | 40.7% | 52.9% |
-| singleton | 7.4% | 4.3% |
-| nonsingleton (per item) | 13.4% | 11.1% |
+| target | 40.3% | 51.8% |
+| singleton | 7.0% | 4.4% |
+| nonsingleton (per item) | 13.6% | 11.4% |
 
-Direction and ordering reproduced (suppression below baseline; compare
-the source paper's 42.0 / 7.9 / 14.2 under slightly different
-exclusions). Miscalibration: the model *over*-guides (too much target,
-too much suppression) — a single g_T shared across saccade indices
-compromises between first saccades (42% target) and later saccades
-(higher target rates as search closes in).
+Suppression-below-baseline ordering reproduced (source paper: 42.0 /
+7.9 / 14.2 under slightly different exclusions); the model over-guides
+— one g_T shared across saccade indices compromises between first
+saccades and the better-guided later ones.
 
-## No-IoR refixation diagnostic (pre-registered in the model doc)
-
-Saccades 2+ returning to an already-visited item: **observed 1.2%,
-no-IoR model predicts 6.3%.** Humans avoid revisits ~5x more than the
-bare field explains. The diagnostic fails in the direction that
-warrants the single visited-item penalty, to be added as a model
-comparison (one extra weight), per §7 of the model doc.
+Refixations (saccades 2+, held-out): observed **1.15%**; no-IoR model
+predicted 6.15%; with the single g_I weight the model predicts
+**1.23%** — the diagnostic that motivated the term is now matched.
 
 ## Caveats on record
 
-- **k ≈ 0.24 (near-flat envelope).** Under the v1 separability
-  assumption (one multiplicative envelope shared by all channels), the
-  likelihood prefers almost no distance falloff. Either proximity
-  genuinely matters little for between-item choice in these dense
-  6-item rings, or the shared-envelope form is strained (a far target
-  is chosen anyway, dragging k down against the nonsingleton proximity
-  structure). Distinguishing these needs the per-channel falloff
-  extension.
-- No uncertainty intervals yet (bootstrap over subjects planned).
+- **k ≈ 0.4 (shallow envelope).** Under the v1 separability assumption
+  (one multiplicative envelope shared by all channels), the likelihood
+  prefers a weak distance falloff. Either proximity matters little for
+  between-item choice on these dense rings, or the shared-envelope form
+  is strained (far targets are chosen anyway, dragging k down).
+  Per-channel falloffs are the discriminating extension.
+- Single split seed; no bootstrap intervals yet.
 - Parameter recovery on synthetic data not yet run.
