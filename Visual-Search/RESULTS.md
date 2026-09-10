@@ -347,6 +347,22 @@ our weights come from suppression paradigms, so absolute capture
 levels are not comparable — the reproduced content is the location
 modulation, its spillover to targets, and (negatively) the gradient.
 
+## Trace spread sigma_h (fit_sigma.py; results_fit_sigma.json)
+
+Adding a mass-preserving ring-Gaussian spread to the trace updates
+(sigma -> 0 nests the slot-exact final model): the free fit collapses
+to sigma = 0.13 slots (nothing reaches even the nearest neighbor),
+held-out NLL identical to the null (1.22797 both; r0 refit jointly to
+0.55, marginally improving on the earlier 1.22833). Conclusion: **no
+measurable trace spread in roving-location designs** — neighbor
+repeats are rare and unstructured, so the kernel has no variance to
+bite on. The Wang & Theeuwes gradient divergence therefore stands as
+a prediction about *biased* designs specifically: sigma_h is
+measurable only where location statistics concentrate mass, which is
+exactly where W&T observed the gradient and where the agent-side
+spread trace earned its keep. A biased-design human fit is the
+experiment that would estimate it.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
