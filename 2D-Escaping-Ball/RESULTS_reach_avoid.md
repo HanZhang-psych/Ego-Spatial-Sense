@@ -233,6 +233,49 @@ goal-directed action — is pursuit-time normalization: the prior should
 yield when a fully observed goal supersedes it, leaving anticipation nearly
 free in idle periods and nearly invisible during pursuit.
 
+## Fixation-start (reset) structure — the definitive anticipation result
+
+The continuous design confounds anticipatory drift with positional
+carryover (the agent simply stays where the last goal was). The
+`--reset_agent` variant adopts the human trial structure: teleport to the
+arena center (= return to fixation; previous-scan buffer reset so the
+teleport is not a looming transient), a 100-step anticipation period with
+no goal, then goal onset. Spread trace, β=0.15, η=0.05,
+`--min_spawn_dist 150`, seeds 42–44, both arms
+(`anticipation_reset_*.csv`).
+
+**Per-trial anticipatory excursion, from a standardized start.** The start
+is 184 px from the frequent-quadrant center. By the end of the anticipation
+period the trace agent has moved *toward* the region (end distance ~153–176
+px across exposure, learning visible in early bins), while the control
+moves *away* (215–240 px — avoidance pressure alone). In the unbiased test
+block the trace excursion decays across trials (187 → 214 px, approaching
+the control's ~225) — per-trial persistence-with-decay, now measured as an
+active excursion rather than a residue of where the agent happened to be.
+
+**Net speed benefit for history-congruent goals via the head start**
+(exposure block, absolute steps to goal):
+
+| goal vs. centroid | trace | control | mechanism |
+| --- | --- | --- | --- |
+| <100px (valid) | 22.5 | 24.6 | shorter onset distance (205 vs. 239 px); per-distance speed equal |
+| 100–250px | 32.8 | 38.8 | head start again (240 vs. 286 px); near-miss cost eliminated |
+| >250px (incongruent) | 42.8 | 36.9 | headwind + longer onset distance |
+
+Region view: frequent goals 31.7 vs. 33.6 steps (trace faster), rare 34.4
+vs. 37.1. In the unbiased test block the trace arm is *slower* (frequent
+47.0 vs. 40.8) — the now-invalid prior still pulls, i.e.
+persistence-despite-cost, decaying at the trace rate.
+
+Together with the spread-trace fix this recovers the full
+probability-cueing phenomenology in the agent: active anticipatory
+excursion from a fixed start that builds with exposure, faster acquisition
+of history-congruent targets (via pre-positioning, not per-distance speed),
+cost confined to history-incongruent targets and to the post-bias test
+block, and trial-timescale decay. Collisions are elevated equally in both
+arms by the teleports (24 vs. 22 over ~260k steps) — a property of the
+reset protocol, not of the trace.
+
 ## Reproduce
 
 See README_reach_avoid.md; all runs used `--device cpu`, seeds 42–46.

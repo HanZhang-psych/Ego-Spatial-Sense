@@ -51,15 +51,16 @@ def in_quadrant(g):
 
 
 def sample_goal_biased(player, args, biased):
+    min_dist = getattr(args, "min_spawn_dist", 250)
     if biased and random.random() < args.bias_p:
         for _ in range(200):
             gx = random.uniform(QUAD[0], QUAD[2])
             gy = random.uniform(QUAD[1], QUAD[3])
-            if math.hypot(gx - player.x, gy - player.y) >= 250:
+            if math.hypot(gx - player.x, gy - player.y) >= min_dist:
                 return gx, gy
         # Player is inside the quadrant: accept a closer goal there.
         return random.uniform(QUAD[0], QUAD[2]), random.uniform(QUAD[1], QUAD[3])
-    return sample_goal(player, args.width, args.height)
+    return sample_goal(player, args.width, args.height, min_dist=min_dist)
 
 
 def spread_goal_field(model, points, weights, px, py):
@@ -134,9 +135,28 @@ def run_arm(model, args, seed, beta):
         prev = d.copy()
         tracker.update(player, balls)
 
+    def anticipation_period(block, gi):
+        """Goal-free period: zero goal fed; drift is a pure trace readout."""
+        dists = []
+        for _ in range(args.goal_free_steps):
+            step(None)
+            dists.append(
+                math.hypot(player.x - QUAD_CENTER[0], player.y - QUAD_CENTER[1])
+            )
+        free_rows.append(
+            [block, gi, round(sum(dists) / len(dists), 1), round(dists[-1], 1)]
+        )
+
     def run_block(block, num_goals, biased):
-        nonlocal cx, cy
+        nonlocal cx, cy, prev
         for gi in range(num_goals):
+            if args.reset_agent:
+                # Trial structure analogous to fixation-start paradigms:
+                # reset to center, anticipation period, then goal onset.
+                player.x, player.y = args.width // 2, args.height // 2
+                prev = None  # teleport must not register as a looming transient
+                tracker.in_contact.clear()
+                anticipation_period(block, gi)
             goal = sample_goal_biased(player, args, biased)
             # Presence-driven trace update at spawn (both arms track it;
             # only beta>0 injects it).
@@ -161,14 +181,8 @@ def run_arm(model, args, seed, beta):
                  round(spawn_px, 1), round(spawn_py, 1),
                  round(cx, 1), round(cy, 1)]
             )
-            # Goal-free period: zero goal fed.
-            dists = []
-            for _ in range(args.goal_free_steps):
-                step(None)
-                dists.append(
-                    math.hypot(player.x - QUAD_CENTER[0], player.y - QUAD_CENTER[1])
-                )
-            free_rows.append([block, gi, round(sum(dists) / len(dists), 1)])
+            if not args.reset_agent:
+                anticipation_period(block, gi)
 
     run_block("exposure", args.num_exposure_goals, biased=True)
     run_block("test", args.num_test_goals, biased=False)
@@ -224,6 +238,10 @@ def main():
     parser.add_argument("--max_trace_points", type=int, default=60)
     parser.add_argument("--arms", type=str, default="both",
                         choices=["both", "trace"])
+    parser.add_argument("--reset_agent", action="store_true",
+                        help="Reset ego to center each trial (fixation-start "
+                             "structure: reset -> anticipation -> goal onset)")
+    parser.add_argument("--min_spawn_dist", type=float, default=250)
     parser.add_argument("--bias_p", type=float, default=0.7)
     parser.add_argument("--num_exposure_goals", type=int, default=120)
     parser.add_argument("--num_test_goals", type=int, default=80)
@@ -266,7 +284,8 @@ def main():
                 w.writerow([arm] + r)
     with open(f"{args.out_prefix}_goalfree.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["arm", "block", "goal_idx", "mean_dist_to_quad_center"])
+        w.writerow(["arm", "block", "goal_idx", "mean_dist_to_quad_center",
+                    "end_dist_to_quad_center"])
         for arm in ["trace", "control"]:
             for r in all_rows[arm][1]:
                 w.writerow([arm] + r)

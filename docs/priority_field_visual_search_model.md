@@ -202,6 +202,18 @@ eliminates the far-goal headwind (opposing bumps cancel into a plateau
 inside the spread), and fully preserves anticipatory drift — the trace's
 spatial resolution, not the history mechanism, was the liability.
 
+**Definitive version — fixation-start trial structure** (`--reset_agent`:
+teleport to center = return to fixation, anticipation period, goal
+onset), which removes the positional-carryover confound of the continuous
+design. Result: active per-trial anticipatory excursion toward the
+frequent region from a standardized start (control moves away), building
+with exposure and decaying across the unbiased test block; **net faster
+acquisition of history-congruent goals** (22.5 vs. 24.6 and 32.8 vs. 38.8
+steps) delivered through the excursion's head start (per-distance speed
+equal), with cost confined to incongruent goals and the post-bias test
+block (persistence-despite-cost). The full probability-cueing
+phenomenology, recovered in the action domain.
+
 A β=0.05 follow-up additionally found a gain window bounded below by the
 environment's 1px actuation quantization (no drift, residual pursuit
 drag). Together these motivate two v2 refinements: **spread-matched
