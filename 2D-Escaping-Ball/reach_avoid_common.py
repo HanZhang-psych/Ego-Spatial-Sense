@@ -27,7 +27,8 @@ ATTRACT_TAPER_DIST = 60.0  # Attraction ramps down linearly inside this range
 
 
 class Ball:
-    def __init__(self, x, y, radius, color, speed, width=800, height=800):
+    def __init__(self, x, y, radius, color, speed, width=800, height=800,
+                 x_min=None, x_max=None):
         self.x = x
         self.y = y
         self.prev_x = x
@@ -37,6 +38,10 @@ class Ball:
         self.speed = speed
         self.width = width
         self.height = height
+        # Optional horizontal confinement (used by the hazard-biased world to
+        # keep ball density asymmetric; defaults to the full arena).
+        self.x_min = 0 if x_min is None else x_min
+        self.x_max = width if x_max is None else x_max
         # For moving balls, choose a random initial direction.
         self.dx = random.choice([-1, 1]) * self.speed
         self.dy = random.choice([-1, 1]) * self.speed
@@ -46,8 +51,8 @@ class Ball:
         self.x += self.dx
         self.y += self.dy
 
-        # Bounce off the walls.
-        if self.x - self.radius < 0 or self.x + self.radius > self.width:
+        # Bounce off the walls (or the confinement bounds).
+        if self.x - self.radius < self.x_min or self.x + self.radius > self.x_max:
             self.dx *= -1
         if self.y - self.radius < 0 or self.y + self.radius > self.height:
             self.dy *= -1
@@ -57,19 +62,38 @@ class Ball:
         return distance < self.radius + other.radius
 
 
-def make_world(num_balls, width, height):
-    """Create the player and moving balls exactly like evaluate.py."""
+def make_world(num_balls, width, height, hazard_side=None, hazard_frac=0.8):
+    """Create the player and moving balls exactly like evaluate.py.
+
+    With hazard_side ("left" or "right"), a hazard_frac fraction of the balls
+    is spawned in — and confined to — that half of the arena (the rest are
+    confined to the other half), creating a persistent density asymmetry for
+    selection-history experiments.  hazard_side=None reproduces the standard
+    world exactly.
+    """
     player = Ball(width // 2, height // 2, 20, (255, 0, 0), 0, width, height)
     balls = []
     margin = 10
     min_distance = player.radius + 15 + margin
-    for _ in range(num_balls):
+    num_hazard = round(num_balls * hazard_frac) if hazard_side else 0
+    for i in range(num_balls):
+        if hazard_side is None:
+            x_lo, x_hi = 30, width - 30
+            x_min = x_max = None
+        else:
+            in_hazard = i < num_hazard
+            on_left = (hazard_side == "left") == in_hazard
+            x_min, x_max = (0, width // 2) if on_left else (width // 2, width)
+            x_lo, x_hi = x_min + 30, x_max - 30
         while True:
-            x = random.randint(30, width - 30)
+            x = random.randint(x_lo, x_hi)
             y = random.randint(30, height - 30)
             if math.hypot(x - player.x, y - player.y) >= min_distance:
                 break
-        balls.append(Ball(x, y, 20, (0, 0, 255), random.randint(1, 3), width, height))
+        balls.append(
+            Ball(x, y, 20, (0, 0, 255), random.randint(1, 3), width, height,
+                 x_min=x_min, x_max=x_max)
+        )
     balls.append(player)
     return player, balls
 

@@ -27,7 +27,13 @@ from reach_avoid_common import (
 
 
 def run_episode(args, csv_writer, episode_id):
-    player, balls = make_world(args.num_balls, args.width, args.height)
+    player, balls = make_world(
+        args.num_balls,
+        args.width,
+        args.height,
+        hazard_side=args.hazard_side,
+        hazard_frac=args.hazard_frac,
+    )
     goal = sample_goal(player, args.width, args.height)
     tracker = CollisionTracker()
     goals_reached = 0
@@ -72,6 +78,11 @@ def main():
     parser.add_argument("--record_every", type=int, default=5)
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--reset_on_collision", action="store_true", default=True)
+    parser.add_argument(
+        "--hazard_side", type=str, default=None, choices=["left", "right"],
+        help="Confine most balls to one half of the arena (selection-history bias)",
+    )
+    parser.add_argument("--hazard_frac", type=float, default=0.8)
     parser.add_argument("--output", type=str, default="dataset/data_goal.csv")
     args = parser.parse_args()
 

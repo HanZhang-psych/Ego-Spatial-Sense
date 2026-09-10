@@ -58,6 +58,9 @@ from pairing frames across resets).
 | `train_goal_es2.py` | Imitation training (same alternating-k schedule as `train_es2.py`) |
 | `evaluate_reach_avoid.py` | Closed-loop evaluation, multi-seed, Pareto metrics |
 | `goal_swap_probe.py` | Goal-swap diagnostic (see below) |
+| `model/goal_mlp.py`, `model/goal_transformer.py` | Goal-conditioned MLP / Transformer baselines (same 722-feature input) |
+| `train_goal_baseline.py` | Trainer for the two baselines (`--model mlp|transformer`) |
+| `selection_history_probe.py` | Selection-history probe: hazard-biased training vs. unbiased control (see below) |
 
 ## Reproduce
 
@@ -108,6 +111,27 @@ A causal ablation verifying the agent actually *uses* the goal input, in two for
   *direction*, not avoidance, so collision rates should stay comparable across
   conditions; if avoidance also collapses under a wrong goal, that entanglement is
   itself a finding.
+
+## Architecture comparison
+
+`train_goal_baseline.py --model mlp` / `--model transformer` trains
+goal-conditioned MLP / Transformer baselines on the same demonstrations, and
+`evaluate_reach_avoid.py` / `goal_swap_probe.py` dispatch on the checkpoint
+name (`goal_mlp.pth`, `goal_transformer.pth`). Headline result: all three use
+the goal, but only ES2 (and the Transformer) keep goal-steering decomposed
+from avoidance under the goal-swap manipulation — the MLP's collision rate
+doubles when fed a wrong goal — and only ES2 matches the expert's
+throughput/safety frontier point.
+
+## Selection-history experiment
+
+`expert_goal.py --hazard_side left` generates demonstrations in a world where
+80% of the balls are confined to one half of the arena;
+`selection_history_probe.py` then tests a model trained on them in the
+STANDARD world against the unbiased control (learned per-ray gains, baseline
+field by sector, clearance and goal-approach asymmetries). Result so far: an
+informative null — behavior cloning from a memoryless expert does not produce
+history effects; see RESULTS_reach_avoid.md for numbers and interpretation.
 
 ## Results (5 seeds × 6000 steps, CPU)
 

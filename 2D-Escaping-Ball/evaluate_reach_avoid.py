@@ -43,12 +43,35 @@ from reach_avoid_common import (
 def load_model(args):
     """Load a model by path.  Returns (model, is_goal_conditioned)."""
     if "goal" in args.model_path:
-        model = GoalEs2Model(
-            num_features=args.num_features,
-            num_actions=args.num_actions,
-            sensing_range=args.sensing_range,
-        ).to(args.device)
-        print("Loading goal-conditioned ES2 model...")
+        if "mlp" in args.model_path:
+            from model.goal_mlp import GoalMLPModel
+
+            model = GoalMLPModel(
+                num_features=args.num_features,
+                num_actions=args.num_actions,
+                sensing_range=args.sensing_range,
+            ).to(args.device)
+            print("Loading goal-conditioned MLP model...")
+        elif "transformer" in args.model_path:
+            from model.goal_transformer import GoalTransformerModel
+
+            model = GoalTransformerModel(
+                num_features=args.num_features,
+                num_actions=args.num_actions,
+                d_model=args.d_model,
+                nhead=args.nhead,
+                num_encoder_layers=args.num_layers,
+                dim_feedforward=args.dim_feedforward,
+                sensing_range=args.sensing_range,
+            ).to(args.device)
+            print("Loading goal-conditioned Transformer model...")
+        else:
+            model = GoalEs2Model(
+                num_features=args.num_features,
+                num_actions=args.num_actions,
+                sensing_range=args.sensing_range,
+            ).to(args.device)
+            print("Loading goal-conditioned ES2 model...")
         model.load_state_dict(torch.load(args.model_path, map_location=args.device))
         model.eval()
         return model, True
@@ -168,7 +191,11 @@ def run_rollout(model, is_goal_model, args, seed, goal_mode="correct", render=Fa
 
         with torch.no_grad():
             action = model(obs_t)
-            if is_goal_model and steps % args.field_every == 0:
+            if (
+                is_goal_model
+                and hasattr(model, "compute_fields")
+                and steps % args.field_every == 0
+            ):
                 obstacle_field, goal_field = model.compute_fields(obs_t)
                 field = (obstacle_field + goal_field)[0]
                 bearing = math.degrees(
