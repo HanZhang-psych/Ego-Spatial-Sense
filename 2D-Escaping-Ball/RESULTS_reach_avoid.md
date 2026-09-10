@@ -170,6 +170,23 @@ the display appears.
 Collisions: 11 (trace) vs. 6 (control) across ~230k steps — avoidance largely
 intact. Raw data: `anticipation_goals.csv`, `anticipation_goalfree.csv`.
 
+**β=0.05 follow-up — a gain window, bounded by an actuation floor.** Re-run
+at a third of the trace gain (`anticipation_b005_*.csv`): the drift
+disappears (goal-free distance 153 px vs. control 160, no acquisition trend;
+spawn distance 279 ≈ control 282) while a small pursuit drag remains
+(15.9 vs. 13.8 steps/100px on frequent goals). Cause: the environment
+truncates sub-pixel forces (`player.x += int(fx)`), so a trace-induced force
+below 1 px/step actuates nothing — β=0.05 sits under that floor during
+goal-free periods, yet still perturbs pursuit where it sums with larger
+forces. So with a static, always-on injection this environment offers no β
+with net-positive throughput: the pre-positioning payoff is bounded
+(~47 px ≈ 7 steps saved) while expressible-β interference costs ~35 steps
+on frequent goals. The principled refinement this motivates — and the
+plausible reason human history effects are small during explicit
+goal-directed action — is pursuit-time normalization: the prior should
+yield when a fully observed goal supersedes it, leaving anticipation nearly
+free in idle periods and nearly invisible during pursuit.
+
 ## Reproduce
 
 See README_reach_avoid.md; all runs used `--device cpu`, seeds 42–46.

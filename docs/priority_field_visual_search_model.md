@@ -185,6 +185,15 @@ probability-cueing paradigm should abolish the within-trial
 frequent-location benefit while leaving any residual history effect only
 pre-onset (e.g., anticipatory gaze bias before display onset).
 
+A β=0.05 follow-up found a gain window bounded below by the environment's
+1px actuation quantization (no drift, residual pursuit drag), so the
+static always-on injection admits no net-positive gain in this
+environment. This motivates the principled refinement: **pursuit-time
+normalization** — the history prior yields when a fully observed goal
+supersedes it — plausibly why human history effects are small during
+explicit goal-directed action. Normalization across field sources is a
+candidate v2 component for both instantiations.
+
 Combined with the existing behavior-cloning null (§8), the selection-history
 story is parallel across domains: *the slot exists (architecture); imitation
 cannot fill it (null); one presence-driven rule fills it and the frozen
