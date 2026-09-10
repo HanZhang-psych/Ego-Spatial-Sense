@@ -10,16 +10,21 @@ implemented and fitted in `Visual-Search/` (RESULTS.md there); the
 action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
-**Final model of record (search side), one sentence:** a single
-goal-modified priority map — template-rotated, rectified contrast
-computed from pixels — read through a fixed sigmoid attention window
-(ES2's form; ego-anchored, fitted k=3.21, r0≈0), with selection
-history (two world-anchored leaky location traces) and within-trial
-IoR written into the map beneath the window, resolved by softmax.
-History modifies the map, never the window. Every structural choice
-(traces, IoR, goal-early assembly, window form) was decided by
-held-out model comparison; fitted values and the comparison ledger
-are in `Visual-Search/RESULTS.md`.
+**Final model of record (search side), one sentence:** one priority
+map assembled from all three sources — goal-modified salience
+(template-rotated, rectified contrast computed from pixels), the two
+world-anchored leaky location traces, and within-trial IoR — read
+through a fixed, ego-anchored sigmoid attention window (ES2's form;
+fitted k=3.4, reach r0=0.49) and resolved by softmax. **Everything,
+memory included, expresses through the window** — the ordering was
+itself decided by held-out comparison (history-inside beat
+history-outside by ~540 NLL), overturning the earlier
+memory-bypasses-the-window commitment and matching the agent, whose
+runtime trace always injected through its distance-sensitive gain
+machinery. History modifies the map, never the window itself. Every
+structural choice (traces, IoR, goal-early assembly, window form,
+history ordering) was decided by held-out model comparison; fitted
+values and the comparison ledger are in `Visual-Search/RESULTS.md`.
 
 Paper structure this document serves: (1) a computational model of visual
 search — the signed priority field fitted to human saccade data; (2)

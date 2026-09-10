@@ -256,6 +256,42 @@ Three shapes for the sensor-readout attention window, same split:
   window variation with beta_T 1.87, beta_D -0.26, eta_T 0.63,
   eta_D 0.20, g_I -2.15).
 
+## History ordering: inside vs outside the window
+(results_history_order.json)
+
+Does memory (traces + IoR) enter the field at full strength regardless
+of eccentricity (outside the window), or is its expression gated by
+the same attention window as the stimulus (inside)? Equal-weight fits,
+r0 free in both:
+
+| Ordering | held-out NLL | held-out, saccades 2+ |
+| --- | --- | --- |
+| history outside (prior commitment) | 1.2407 | 1.0050 |
+| **history inside (gated)** | **1.2283** | **0.9875** |
+
+Δ ≈ 540 total held-out NLL — decisive. **The architectural commitment
+is revised: everything is read through the window.** The final field
+is F = window(d) * [goal-modified salience + beta*traces + g_I*visited],
+i.e., one priority map assembled from all three sources and then
+window-gated — which is both what the data prefer and the cleaner
+statement (a single gate over the whole map). Notes:
+
+- With history inside, the window recovers a genuine reach:
+  r0 = 0.49 (half-height at the ring radius), k = 3.4 — a plateau it
+  did not show when forced to serve the stimulus alone. History
+  amplitudes rescale accordingly (beta_T 4.45, beta_D -0.53,
+  g_I -6.30 raw; effective strengths at item distances comparable to
+  before).
+- Anticipation survives: pre-onset the window is centered at fixation
+  and covers the display gradedly, so the prior is attenuated, not
+  abolished; on first saccades from center the orderings are
+  equivalent up to a constant.
+- This also resolves the search/agent asymmetry in the agent's favor:
+  the agent's runtime trace was always injected through its
+  distance-sensitive goal-gain machinery. The two instantiations now
+  agree - memory expresses through the same windowed readout as
+  perception.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
