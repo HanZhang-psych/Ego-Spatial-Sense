@@ -113,8 +113,9 @@ while real trials are censored by the response deadline and the end of
 the fixation report — a design difference, not a recovery failure.
 
 ## Generated predictions: high-probability distractor location
-(predict_hp_distractor.py — Wang & Theeuwes-style design, simulated
-from the fitted weights; no new parameters)
+(v1-era prediction run, script since superseded by
+reproduce_wang_theeuwes.py on the final model — see that section below;
+simulated from the fitted weights, no new parameters)
 
 Design: singleton present 70%; when present, at one HP location 65%
 (LP locations 7% each); 400 biased + 200 unbiased trials.
