@@ -110,7 +110,9 @@ def main():
     for name, use_traces, frozen in [
             ("v2_null_no_traces", False,
              ["beta_T", "beta_D", "raw_eta_T", "raw_eta_D", "g_I"]),
-            ("v2_full", True, [])]:
+            ("v2_full", True, []),
+            ("v2_color_rejection_only", True, ["w_sal"]),
+            ("v2_salience_only", True, ["g_simS"])]:
         m = SearchEs2ModelV2()
         with torch.no_grad():
             for n in frozen:

@@ -165,15 +165,25 @@ split, 10 weights.
   weights survive the front-end swap essentially unchanged (beta_T
   1.71 vs 1.87; beta_D -0.24 vs -0.27; eta_T 0.643 vs 0.627; eta_D
   0.196 vs 0.173; g_I -2.39 vs -2.01).
-- **First separation of rejection-template vs salience gain**:
-  g_simS = -0.18 (the distractor's color is penalized) with
-  w_sal = +0.11 (raw salience weakly attractive once color is
-  accounted for). Read cautiously: SIM_S and SAL are collinear (both
-  peak at the singleton), the reconstruction's salience computation is
-  ours not the retina's, and the split leans on cross-study color
-  variation — but at face value it favors feature-based rejection over
-  salience-map suppression as the carrier of below-baseline oculomotor
-  suppression.
+- **Suppression-mechanism comparison (nested, held-out):** full model
+  (g_simS and w_sal both free) 1.32879; color-rejection only 1.32941;
+  salience only 1.32978 — differences of ~27–43 total NLL, weak
+  evidence. More telling: in the single-mechanism fits the dedicated
+  suppression weight collapses toward zero (g_simS −0.05 alone;
+  w_sal −0.01 alone) while the *template-color enhancement* g_simT
+  rises to absorb the effect (0.25 → 0.41/0.44). In two-color
+  displays every nontarget shares the target's color, so SIM_T and
+  SIM_S are complementary — "boost green" and "penalize red" differ
+  only by a constant the softmax ignores, and salience marks the same
+  single odd item. Conclusion: (1) below-baseline oculomotor
+  suppression in these displays is carried almost entirely by
+  **template-color enhancement relegating the mismatching singleton**,
+  with dedicated suppression weights adding only marginal held-out
+  gain; (2) enhancement-vs-suppression and rejection-vs-salience are
+  **structurally unidentifiable in two-color displays** — separating
+  them requires ≥3 colors (heterogeneous nontarget colors), a concrete
+  design prescription. v1's single g_S was the flag-level projection
+  of this confounded bundle.
 - k lands large (~9.8): in v2 the envelope acts on the sensor's range
   reading, effectively gating wedges by whether/where they contain
   energy — not comparable to v1's k on geometric distance.

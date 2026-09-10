@@ -31,6 +31,38 @@
     "train_nll_per_saccade": 1.3352210521697998,
     "test_nll_per_saccade": 1.3287945985794067
   },
+  "v2_color_rejection_only": {
+    "params": {
+      "k": 9.8955,
+      "g_form": 0.6996,
+      "g_simT": 0.4076,
+      "g_simS": -0.0474,
+      "w_sal": 0.0,
+      "beta_T": 1.7131,
+      "beta_D": -0.2377,
+      "eta_T": 0.643,
+      "eta_D": 0.1944,
+      "g_I": -2.3891
+    },
+    "train_nll_per_saccade": 1.335370659828186,
+    "test_nll_per_saccade": 1.3294137716293335
+  },
+  "v2_salience_only": {
+    "params": {
+      "k": 9.8041,
+      "g_form": 0.7005,
+      "g_simT": 0.4435,
+      "g_simS": 0.0,
+      "w_sal": -0.0138,
+      "beta_T": 1.7121,
+      "beta_D": -0.2372,
+      "eta_T": 0.6431,
+      "eta_D": 0.1951,
+      "g_I": -2.392
+    },
+    "train_nll_per_saccade": 1.3354681730270386,
+    "test_nll_per_saccade": 1.3297760486602783
+  },
   "v1_reference": {
     "null_no_traces": 1.3665481805801392,
     "traces": 1.2737221717834473,
