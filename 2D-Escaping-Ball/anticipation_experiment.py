@@ -62,6 +62,21 @@ def sample_goal_biased(player, args, biased):
     return sample_goal(player, args.width, args.height)
 
 
+def spread_goal_field(model, points, weights, px, py):
+    """Weighted sum of goal-field bumps over trace points (spread-matched
+    trace).  Uses the model's own goal-field machinery (alignment x learned
+    distance gain) evaluated at each remembered spawn position."""
+    dx = torch.tensor([p[0] - px for p in points], dtype=torch.float32)
+    dy = torch.tensor([p[1] - py for p in points], dtype=torch.float32)
+    dist = torch.sqrt(dx**2 + dy**2)
+    ux = dx / (dist + 1e-6)
+    uy = dy / (dist + 1e-6)
+    align = ux.unsqueeze(1) * model.ray_cos + uy.unsqueeze(1) * model.ray_sin
+    gain = model.goal_gain((dist / model.sensing_range).unsqueeze(1))
+    w = torch.tensor(weights, dtype=torch.float32).unsqueeze(1)
+    return (w * gain * align).sum(0, keepdim=True)  # (1, num_features)
+
+
 def run_arm(model, args, seed, beta):
     random.seed(seed)
     torch.manual_seed(seed)
@@ -70,6 +85,9 @@ def run_arm(model, args, seed, beta):
     prev = None
     # Trace state: leaky centroid of goal spawn positions, starts at center.
     cx, cy = args.width / 2, args.height / 2
+    # Spread trace: remembered spawn positions, newest first, with
+    # exponential weights (1 - eta)^age — a nonparametric leaky histogram.
+    trace_points = []
 
     goal_rows = []  # per-goal: block, index, region, spawn_dist, steps, reached
     free_rows = []  # per goal-free period: block, index, mean dist to quad center
@@ -89,10 +107,20 @@ def run_arm(model, args, seed, beta):
         with torch.no_grad():
             of, gf = model.compute_fields(obs)
             if beta != 0.0:
-                obs_h = torch.tensor(
-                    prev + d + [cx - player.x, cy - player.y], dtype=torch.float32
-                ).unsqueeze(0)
-                _, gf_h = model.compute_fields(obs_h)
+                if args.trace_kind == "spread" and trace_points:
+                    ages = range(len(trace_points))
+                    ws = [(1 - args.eta) ** a for a in ages]
+                    total = sum(ws)
+                    gf_h = spread_goal_field(
+                        model, trace_points, [w / total for w in ws],
+                        player.x, player.y,
+                    )
+                else:
+                    obs_h = torch.tensor(
+                        prev + d + [cx - player.x, cy - player.y],
+                        dtype=torch.float32,
+                    ).unsqueeze(0)
+                    _, gf_h = model.compute_fields(obs_h)
                 field = of + gf + beta * gf_h
             else:
                 field = of + gf
@@ -114,6 +142,8 @@ def run_arm(model, args, seed, beta):
             # only beta>0 injects it).
             cx = (1 - args.eta) * cx + args.eta * goal[0]
             cy = (1 - args.eta) * cy + args.eta * goal[1]
+            trace_points.insert(0, (goal[0], goal[1]))
+            del trace_points[args.max_trace_points:]
             spawn_px, spawn_py = player.x, player.y
             spawn_dist = math.hypot(goal[0] - player.x, goal[1] - player.y)
             steps = 0
@@ -189,6 +219,11 @@ def main():
 
     parser.add_argument("--beta", type=float, default=0.5)
     parser.add_argument("--eta", type=float, default=0.05)
+    parser.add_argument("--trace_kind", type=str, default="point",
+                        choices=["point", "spread"])
+    parser.add_argument("--max_trace_points", type=int, default=60)
+    parser.add_argument("--arms", type=str, default="both",
+                        choices=["both", "trace"])
     parser.add_argument("--bias_p", type=float, default=0.7)
     parser.add_argument("--num_exposure_goals", type=int, default=120)
     parser.add_argument("--num_test_goals", type=int, default=80)
@@ -205,7 +240,10 @@ def main():
     all_rows = {"trace": ([], [], 0), "control": ([], [], 0)}
     for i in range(args.num_seeds):
         seed = args.random_seed + i
-        for arm, beta in [("trace", args.beta), ("control", 0.0)]:
+        arm_list = [("trace", args.beta)]
+        if args.arms == "both":
+            arm_list.append(("control", 0.0))
+        for arm, beta in arm_list:
             g, f, coll = run_arm(model, args, seed, beta)
             ag, af, ac = all_rows[arm]
             ag.extend(g)

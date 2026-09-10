@@ -170,6 +170,30 @@ spec's trace kernel width σ_h is the missing piece; prediction: net payoff
 improves monotonically as the trace's spread approaches the true spawn
 spread.
 
+**σ_h follow-up — spread-matched trace: confirmed.** Replacing the point
+centroid with a nonparametric spread trace (exponentially weighted recent
+spawn positions, each contributing its own goal-field bump;
+`--trace_kind spread`, same β=0.15/η/seeds; `anticipation_spread_*.csv`)
+removes most of the interference while preserving the anticipation
+(exposure block, steps/100px, control in parentheses):
+
+| goal vs. centroid | point trace | spread trace | control |
+| --- | --- | --- | --- |
+| <100px (valid) | 9.7 | 12.8 | (10.7) |
+| 100–250px (near miss) | 31.7 | **19.0** | (14.2) |
+| >250px (wrong) | 22.0 | **15.7** | (15.1) |
+
+Mean absolute steps per exposure goal: point 68.3 → spread 46.7 (control
+40.6) — ~75% of the excess cost removed — while goal-free drift is fully
+preserved (134 px vs. control 160, same as the point trace's 133) and the
+far-goal headwind disappears entirely (inside the spread, opposing bumps
+cancel into a plateau; from outside, the basin still guides). In the test
+block the spread trace is essentially costless (frequent goals 12.7 vs.
+control 13.0 steps/100px). As predicted, matching the trace's spread to the
+true spawn spread converts near-miss interference into tailwind; the small
+residual cost is consistent with the still-imperfect spread match and the
+absence of pursuit-time normalization.
+
 Interpretation: the payoff structure follows from *where in the trial the
 uncertainty sits*. During the goal-free period the agent knows nothing about
 the next goal except through the trace — genuine anticipatory uncertainty,

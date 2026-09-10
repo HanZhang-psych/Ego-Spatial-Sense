@@ -195,7 +195,12 @@ near-misses). The net-negative average is a resolution mismatch: the true
 goal distribution is a quadrant but the leaky-centroid trace is a point
 prior, so most goals land in its near-miss ring. The spec's trace kernel
 width σ_h is the missing component; prediction: net payoff improves as
-trace spread approaches the true spawn spread.
+trace spread approaches the true spawn spread. **Confirmed by the σ_h
+follow-up**: a nonparametric spread-matched trace (weighted bumps at
+remembered spawn positions) removes ~75% of the excess pursuit cost,
+eliminates the far-goal headwind (opposing bumps cancel into a plateau
+inside the spread), and fully preserves anticipatory drift — the trace's
+spatial resolution, not the history mechanism, was the liability.
 
 A β=0.05 follow-up additionally found a gain window bounded below by the
 environment's 1px actuation quantization (no drift, residual pursuit
