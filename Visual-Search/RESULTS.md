@@ -292,6 +292,35 @@ statement (a single gate over the whole map). Notes:
   agree - memory expresses through the same windowed readout as
   perception.
 
+## Reproduction battery vs the source paper (reproduce_gaspelin.py)
+
+Final model (v2.1, history-inside), held-out subjects, no refitting.
+Paper analyses out of scope by design: manual RT, latency quantiles,
+continuous gaze, practice-block capture.
+
+1. **Oculomotor suppression** (paper: 42.0 / 7.9 / 14.2): observed
+   40.3 / 7.0 / 13.6; model 51.0 / 6.3 / 11.0. Ordering and
+   below-baseline suppression reproduced; known miscalibration: the
+   model over-guides the target (~+11 pts).
+2. **Suppression across saccades 1–5** (paper: positive suppression at
+   every index): observed effect −6.6 to −10.6 points, persisting
+   strongly; model reproduces indices 1–3 (−4.8, −4.4, −2.8) but
+   under-persists at 4–5 (−1.1, +0.9; n = 1164/386). A named residual:
+   late-saccade suppression in humans outlives what window-gated color
+   relegation plus IoR produce in the model.
+3. **Intertrial location priming** (paper: target 73.3 repeat vs 36.6
+   change; singleton 4.6 vs 10.1): observed 71.1/35.2 and 2.9/7.6 —
+   the pooled subset closely matches the paper; model 82.1/44.1 and
+   3.7/6.7 — both signatures reproduced (target doubling; singleton
+   halving on repeat), with the target effect overshot.
+
+Verdict: every in-scope qualitative signature reproduces from one
+fitted parameter set; the three quantitative residuals (target
+over-guidance, late-saccade suppression persistence, priming
+overshoot) are specific and named, and all point at the same missing
+ingredient family: saccade-index-dependent guidance (a gain that
+grows as search proceeds) and/or the scoped-out motor-repetition term.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
