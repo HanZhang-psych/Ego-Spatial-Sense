@@ -67,6 +67,23 @@ envelope (window account) penalizes *all* eccentric items equally;
 reduced capture via a down-weighted salience gain (suppression account)
 penalizes only the singleton. Distinguishable in first-saccade data.
 
+**The window is still the network's sigmoid block — tied, not replaced.**
+Reporting the estimated window as "σ_env, 1–2 numbers" does not mean the
+search model swaps the agent's neural envelope for a hand formula. It is
+the same per-ray sigmoid block with learnable steepness k, trained
+inside the same network by the same MLE; the search version simply
+**ties the k's across directions** (weight sharing), because the ring
+geometry probes the falloff at only ~3 chord distances per fixation —
+enough to identify a shared radial steepness, not 360 independent ones.
+Weight-tying is a standard network operation; the architecture is
+unchanged, and every fitted "parameter" in this document is a weight of
+that network. The parameter counts state how many free weights survive
+the task's identifiability constraints. Extension: the tie can be
+partially relaxed to a 2-parameter horizontal/vertical split of k —
+the human functional viewing field is anisotropic (wider horizontally),
+and items land at many ego-relative directions across fixations, so
+this is plausibly identifiable. Not v1.
+
 **Two anchoring frames.** The composite a priori gain map — the
 **spatial prior**, gain(q) = envelope(q) + h(q), i.e. the attention
 window modified by history — mixes components glued to different frames:
