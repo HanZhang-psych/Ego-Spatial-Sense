@@ -81,10 +81,40 @@ across the two variants); (3) g_T is not comparable across rules
 needs geometry these iso-eccentric rings do not provide (larger or
 non-ring displays, or per-channel falloffs).
 
+## Parameter recovery (recover.py; results_recovery.json)
+
+The fitted traces+IoR weights generated a synthetic pool (real 333
+subjects' actual trial sequences driving the traces; generative
+scanpaths per trial on the iso-eccentric ring; 273,406 synthetic
+saccades), refit from scratch with the same pipeline:
+
+| Weight | generating | recovered | rel. err |
+| --- | --- | --- | --- |
+| g_T | 3.010 | 2.944 | 2.2% |
+| g_S | −1.808 | −1.788 | 1.1% |
+| beta_T | 1.868 | 1.862 | 0.3% |
+| beta_D | −0.270 | −0.241 | 10.6% |
+| eta_T | 0.627 | 0.630 | 0.4% |
+| eta_D | 0.173 | 0.181 | 4.7% |
+| g_I | −2.005 | −1.973 | 1.6% |
+| k | 0.411 | 0.528 | 28.6% |
+
+Every substantive weight comes back within a few percent, signs and
+ordering exact. The two larger relative errors are the two weakly
+identified quantities, as expected: k (a near-flat envelope leaves
+little curvature to estimate) and beta_D (the smallest weight). The
+estimation machinery — including learning both eta's through the
+trace recursion — is validated.
+
+Note: the synthetic pool shows a higher raw refixation opportunity
+(6.3% observed = 6.6% predicted internally) than the real data (1.15%)
+because simulated searches always run to the target or 5 saccades,
+while real trials are censored by the response deadline and the end of
+the fixation report — a design difference, not a recovery failure.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
   section above); statements about the attention window from these
   fits must name the rule they assume.
 - Single split seed; no bootstrap intervals yet.
-- Parameter recovery on synthetic data not yet run.
