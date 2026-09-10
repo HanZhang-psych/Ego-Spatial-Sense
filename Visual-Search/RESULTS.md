@@ -214,10 +214,20 @@ the spatial sources (traces, IoR).
 - **Third front-end, same history/IoR weights**: beta_T 1.87,
   beta_D −0.27, eta_T 0.630, eta_D 0.193, g_I −2.15 — the selection-
   history and IoR layer is invariant to every perception swap tried.
-- Note: the envelope k collapses (~0.05) because the sensor's
-  near-weighted radial integration now carries the distance
-  dependence — the eccentricity falloff has moved into the perception
-  module, where ES2 arguably always put it.
+- **The attention window, estimated in its sensor-native place.**
+  The initial v2.1 hand-set the sensor's radial falloff (exp(−2r))
+  and carried a separate fitted envelope, which collapsed to ~0 — the
+  hidden hand-set window was doing its job. Revision: the falloff
+  decay is now the fitted window parameter and the redundant envelope
+  is retired. Estimated k = 2.15 (held-out 1.2408, a further small
+  gain): at the ring geometry this weights an adjacent item ~3x an
+  opposite-side item — a genuinely graded functional viewing field,
+  overturning the earlier "flat window" reading, which was an
+  artifact of estimating the window in the wrong place (multiplying
+  item utilities) under the wrong combination rule. The hand-set
+  constant (2.0) happened to be near-optimal, which is why freeing it
+  changed little else (history/IoR weights again unchanged: beta_T
+  1.87, beta_D -0.26, eta_T 0.630, eta_D 0.201, g_I -2.15).
 
 ## Caveats on record
 

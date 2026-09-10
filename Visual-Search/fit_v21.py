@@ -36,7 +36,7 @@ class SearchEs2ModelV21(nn.Module):
         self.g_O = nn.Parameter(torch.tensor(0.0))
         self.w_p = nn.Parameter(torch.tensor(0.5))
         self.g_form = nn.Parameter(torch.tensor(1.0))
-        self.raw_k = nn.Parameter(torch.tensor(1.0))
+        self.raw_k = nn.Parameter(torch.tensor(0.7))   # window decay (softplus)
         self.beta_T = nn.Parameter(torch.tensor(0.5))
         self.beta_D = nn.Parameter(torch.tensor(-0.1))
         self.raw_eta_T = nn.Parameter(torch.tensor(0.0))
@@ -57,9 +57,10 @@ class SearchEs2ModelV21(nn.Module):
 
     compute_traces = SearchEs2Model.compute_traces
 
-    def stim_ctx(self, P, w_near):
+    def stim_ctx(self, P, radii):
         m = (self.g_T * P[..., 0] + self.g_O * P[..., 1]
              + self.w_p * P[..., 2])
+        w_near = torch.exp(-self.k * radii)   # FITTED attention window
         return (torch.relu(m) * w_near).sum(-1)
 
     def named_values(self):
@@ -89,7 +90,6 @@ def main():
     cid = torch.tensor(sacc.ctx.values.astype(int))
     nbins = P.shape[2]
     radii = torch.linspace(0.09, 1.1, nbins)
-    w_near = torch.exp(-2.0 * radii)
     S = tt["eT"].shape[0]
     print(f"{len(sacc)} saccades, {S} subjects, {P.shape[0]} contexts")
 
@@ -105,9 +105,8 @@ def main():
             hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
         else:
             hT = hD = torch.zeros(len(sacc), NLOC)
-        stim = m.stim_ctx(P, w_near) + m.g_form * FORM   # per context
-        env = torch.sigmoid(m.k * (1.0 - R))
-        F_ctx = env * stim
+        stim = m.stim_ctx(P, radii) + m.g_form * FORM   # per context
+        F_ctx = stim                     # window now lives in the sensor
         F = F_ctx[cid] + m.beta_T * hT + m.beta_D * hD \
             + m.g_I * tt["visited"].float()
         F = F.masked_fill(~tt["valid"], -1e9)
