@@ -364,6 +364,31 @@ exactly where W&T observed the gradient and where the agent-side
 spread trace earned its keep. A biased-design human fit is the
 experiment that would estimate it.
 
+## Pre-onset gaze bias: a floor-limited null (analyze_preonset.py)
+
+Prediction tested: the pre-onset prior (window x history) should
+displace gaze at display onset toward recent target locations and
+away from recent singleton locations. Measure: each trial's initial
+fixation position relative to the subject's own median, projected
+onto lag-1 and fitted-trace directions; 116,500 trials, 287 subjects.
+
+Result: **null on every projection** (all effects 0.02-0.06 px against
+a 38.5 px median offset; all |t| < 0.6) — including the *positive
+control*: projection toward the previous trial's final gaze position
+(+0.02 px, t = 0.27). Return-saccade undershoot is a robust
+oculomotor phenomenon; its complete absence says initial-fixation
+position in these datasets carries no previous-trial structure of ANY
+kind, motor included — consistent with enforced refixation
+(drift-correct / fixation checks before trial start) clamping exactly
+this variable. Verdict: a measurement-floor null, not a refutation —
+the paradigm actively resets the DV. The discriminating test needs
+the continuous sample reports (pre-onset microsaccade direction and
+drift within the inter-trial epoch), which exist on OSF (~9M gaze
+samples) but are not in the local fixation reports. The prediction
+stands, sharpened: it now specifies the measure (pre-onset
+microsaccades, not fixation position) and predicts the control
+(undershoot) should appear there too, validating the channel.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
