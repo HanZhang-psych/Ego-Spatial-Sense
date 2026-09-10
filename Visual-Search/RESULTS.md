@@ -229,6 +229,33 @@ the spatial sources (traces, IoR).
   changed little else (history/IoR weights again unchanged: beta_T
   1.87, beta_D -0.26, eta_T 0.630, eta_D 0.201, g_I -2.15).
 
+## Window-form comparison (results_window_sigmoid/free.json)
+
+Three shapes for the sensor-readout attention window, same split:
+
+| Form (free params) | held-out NLL | fitted shape |
+| --- | --- | --- |
+| exponential decay (1) | 1.24082 | k = 2.15 |
+| **sigmoid, ES2's form (2)** | **1.24048** | r0 ≈ 0, k = 3.21 |
+| nonparametric 24-bin profile (24) | 1.24128 | jagged; overfits |
+
+- The **sigmoid (ES2's own functional form) fits best**, making the
+  window correspondence with the agent literal; adopted as canonical.
+- Its reach parameter collapses to r0 ≈ 0: no plateau — the window
+  declines from fixation immediately (acuity-like falloff, not a
+  spotlight with a rim). The "zoom-lens" reach is simply not exercised
+  at these display scales.
+- The **free profile loses out-of-sample despite 23 extra weights**:
+  its bins align with item chord distances and become covert
+  item-selectors — overfitting display geometry. This settles the
+  "net vs. one k" question empirically: given the same freedom the
+  agent's 360-k window has, held-out prediction on these displays
+  *chooses* the low-parameter form. The restriction is selected by
+  the data, not imposed.
+- History/IoR weights unchanged across all three (sixth front-end or
+  window variation with beta_T 1.87, beta_D -0.26, eta_T 0.63,
+  eta_D 0.20, g_I -2.15).
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
