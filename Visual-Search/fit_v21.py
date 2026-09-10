@@ -1,17 +1,18 @@
 """v2.1 fit: single goal-modified salience map (goal-early).
 
 Assembled stimulus evidence per item, from precomputed radial contrast
-profiles (build_contexts_v21.py):
+profiles (build_contexts_v21.py), with the attention window FITTED in
+the sensor readout:
 
-  s_i = sum_bins w_near(b) * relu(g_T*D_T[b] + g_O*D_O[b] + w_p*D_P[b])
-  F_i = env(R_i) * (s_i + g_form*FORM_i)
-        + beta_T*hT_i + beta_D*hD_i + g_I*visited_i
+  s_i = sum_bins exp(-k*r_b) * relu(g_T*D_T[b] + g_O*D_O[b] + w_p*D_P[b])
+  F_i = s_i + g_form*FORM_i + beta_T*hT_i + beta_D*hD_i + g_I*visited_i
 
 The rectification implements the architectural commitment: feature-
 level suppression is attenuation/relegation (toward zero), never
-negative writing; signed writing is reserved for the spatial sources.
-Comparison target: v2 (goal-late: linear gains on separately computed
-channels incl. a task-blind salience map).
+negative writing. NOTE: this script is the goal-early step of the
+model-comparison ledger (history OUTSIDE the window, exponential
+window); the FINAL model - sigmoid window, history inside - lives in
+results_history_order.json and is loaded by reproduce_gaspelin.py.
 
 10 weights: g_T, g_O, w_p, g_form, k, beta_T, beta_D, eta_T, eta_D, g_I.
 Usage: python fit_v21.py [--epochs 300]
@@ -86,7 +87,6 @@ def main():
     sacc, tt = fp.build_tensors(sacc, ev)
     P = torch.tensor(ctx["P"])                     # [nctx, 6, NBINS, 3]
     FORM = torch.tensor(ctx["FORM"])
-    R = torch.tensor(ctx["R"])
     cid = torch.tensor(sacc.ctx.values.astype(int))
     nbins = P.shape[2]
     radii = torch.linspace(0.09, 1.1, nbins)

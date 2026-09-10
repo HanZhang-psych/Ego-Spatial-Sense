@@ -41,12 +41,25 @@ suppression/priming analyses.
 
 ## Files
 
+Final-model pipeline (v2.1, history-inside; the model of record):
+
 | File | Purpose |
 | --- | --- |
-| `pool_data.py` | 12 fixation reports → `dataset/saccades.csv` (one row per scoreable saccade, with per-item distances from the current fixation) + `dataset/events.csv` (per-trial target/singleton locations driving the traces) |
-| `front_end.py` | Pixel front-end (visual LiDAR): display image -> Itti & Koch feature/salience maps -> ray scan from the current fixation; demo figure in `figures/front_end_demo.png` |
-| `model.py` | `SearchEs2Model`: tied-k sigmoid envelope x channel gains + trace injection → field → softmax |
-| `fit_pooled.py` | Pooled MLE (Adam), null model without traces, diagnostics, `results_fit.json` |
+| `pool_data.py` | Fixation reports → `dataset/saccades.csv` + `dataset/events.csv` |
+| `front_end.py` | Pixel front-end (visual LiDAR): display image → Itti & Koch maps → ray scan from the current fixation |
+| `build_contexts.py` | Reconstructs each unique display, assigns context ids (`saccades_ctx.csv`) |
+| `build_contexts_v21.py` | Goal-early radial contrast profiles per context (`contexts_v21.npz`) |
+| `fit_v21.py` | Goal-early pooled fit (ledger step; the final history-inside variant is in `results_history_order.json`) |
+| `fit_sigma.py` | Trace spatial-spread kernel sigma_h (pins to zero here) |
+| `reproduce_gaspelin.py` | Loads the final model; reproduction battery vs the source paper |
+| `reproduce_wang_theeuwes.py` | HP-distractor-location reproduction (Wang & Theeuwes) |
+| `render_prior_evolution.py` | Pre-onset prior F = window x history over a biased sequence |
+
+Supplement / ledger (earlier model versions backing committed results):
+`model.py` + `fit_pooled.py` (v1 role-flag model; `build_tensors` is
+still the shared data loader), `fit_v2.py` (goal-late pixel variant),
+`recover.py` (v1 parameter recovery), `plot_results.py` (v1 six-panel
+figure). Results JSONs document each step; RESULTS.md is the ledger.
 
 ## Reproduce
 
