@@ -52,13 +52,39 @@ Refixations (saccades 2+, held-out): observed **1.15%**; no-IoR model
 predicted 6.15%; with the single g_I weight the model predicts
 **1.23%** — the diagnostic that motivated the term is now matched.
 
+## The combination-rule fork (⊗): multiplicative vs. additive
+
+The master equation leaves the envelope's entry rule estimable. Both
+8-weight variants were fit on the same split:
+
+| Variant | train NLL | test NLL | distance parameter |
+| --- | --- | --- | --- |
+| multiplicative env(d) x stim | 1.2722 | 1.25647 | k = 0.41 (near-flat) |
+| additive −k·d penalty | 1.2672 | 1.25630 | k = 2.96 (strong slope) |
+
+Held-out performance is a statistical tie (Δ ≈ 7 total NLL over 42k
+test saccades) — **this design barely discriminates the combination
+rule** — but the parameter stories differ sharply: the additive form
+recovers a substantial uniform proximity preference (adjacent vs.
+opposite item ≈ 1.5 utility units, comparable to the target gain),
+which the multiplicative form cannot express without also crushing
+far-target choices, and therefore flattens away (k ≈ 0.4). The
+additive form's in-sample advantage (~875 NLL) does not survive
+transfer to held-out subjects, so neither rule wins on prediction.
+
+Consequences: (1) the earlier "wide attention window" reading is
+rule-conditional — flat under the agent-inherited multiplicative
+entry, a real distance cost under additive entry; (2) history and IoR
+conclusions are rule-invariant (beta, eta, g_I essentially identical
+across the two variants); (3) g_T is not comparable across rules
+(multiplicative g_T multiplies through the envelope). Deciding ⊗
+needs geometry these iso-eccentric rings do not provide (larger or
+non-ring displays, or per-channel falloffs).
+
 ## Caveats on record
 
-- **k ≈ 0.4 (shallow envelope).** Under the v1 separability assumption
-  (one multiplicative envelope shared by all channels), the likelihood
-  prefers a weak distance falloff. Either proximity matters little for
-  between-item choice on these dense rings, or the shared-envelope form
-  is strained (far targets are chosen anyway, dragging k down).
-  Per-channel falloffs are the discriminating extension.
+- **The envelope's width is combination-rule-conditional** (see the ⊗
+  section above); statements about the attention window from these
+  fits must name the rule they assume.
 - Single split seed; no bootstrap intervals yet.
 - Parameter recovery on synthetic data not yet run.

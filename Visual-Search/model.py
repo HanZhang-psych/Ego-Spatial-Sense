@@ -32,8 +32,15 @@ NLOC = 6
 
 
 class SearchEs2Model(nn.Module):
-    def __init__(self):
+    def __init__(self, combine="mul"):
+        """combine: how the envelope enters the field (the master
+        equation's estimable combination-rule fork). "mul" (default,
+        agent-inherited): env(d) scales the stimulus drive. "add": a
+        linear distance penalty -k*d added to every item's utility,
+        independent of item identity (minimal additive form; amplitude
+        and shape folded into the one slope)."""
         super().__init__()
+        self.combine = combine
         self.raw_k = nn.Parameter(torch.tensor(1.0))       # envelope steepness (softplus)
         self.g_T = nn.Parameter(torch.tensor(1.0))         # template gain
         self.g_S = nn.Parameter(torch.tensor(0.0))         # salience/rejection gain
@@ -79,7 +86,10 @@ class SearchEs2Model(nn.Module):
 
     def field(self, d, isT, isS, hT, hD, visited=None):
         stim = 1.0 + self.g_T * isT + self.g_S * isS
-        F = self.envelope(d) * stim + self.beta_T * hT + self.beta_D * hD
+        if self.combine == "add":
+            F = stim - self.k * d + self.beta_T * hT + self.beta_D * hD
+        else:
+            F = self.envelope(d) * stim + self.beta_T * hT + self.beta_D * hD
         if visited is not None:
             F = F + self.g_I * visited.float()
         return F

@@ -201,10 +201,12 @@ def main():
          frozen=["beta_T", "beta_D", "raw_eta_T", "raw_eta_D", "g_I"])),
         ("traces", dict(use_traces=True, use_ior=False, frozen=["g_I"])),
         ("traces_ior", dict(use_traces=True, use_ior=True, frozen=[])),
+        ("traces_ior_additive", dict(use_traces=True, use_ior=True,
+         frozen=[], combine="add")),
     ]
     for name, spec in specs:
         print(f"== {name} ==")
-        m = SearchEs2Model()
+        m = SearchEs2Model(combine=spec.get("combine", "mul"))
         freeze(m, spec["frozen"])
         fit(m, tt, args.epochs, use_traces=spec["use_traces"],
             use_ior=spec["use_ior"], mask=train)
