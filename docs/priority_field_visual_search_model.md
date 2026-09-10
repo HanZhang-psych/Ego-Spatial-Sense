@@ -1,234 +1,219 @@
-# A priority-field model of visual search
+# A signed priority field for search and action
 
-**Derived from the ego spatial sense (ES2) model; adaptation target: first-saccade
-selection in additional-singleton-type search tasks.**
+**One model, two instantiations: the eyes navigating a search space, and an
+agent navigating an action space.** Derived from the ego spatial sense (ES2)
+model (`2D-Escaping-Ball/model/es2.py`, extended in
+`2D-Escaping-Ball/model/goal_es2.py`).
 
-This document specifies the proposed model, states exactly what is preserved,
-generalized, replaced, or added relative to the original ES2 model (as
-implemented in `2D-Escaping-Ball/model/es2.py` and extended in
-`2D-Escaping-Ball/model/goal_es2.py`), and records the design decisions made
-so far, with the empirical debates each parameter engages.
+Status: specification (v1). The search instantiation is not yet implemented;
+the action instantiation and its diagnostics live in `2D-Escaping-Ball/`
+(see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
-Status: specification (v1). No implementation yet. The supporting simulation
-evidence cited in §7 lives in `2D-Escaping-Ball/` (see `README_reach_avoid.md`
-and `RESULTS_reach_avoid.md`).
+Paper structure this document serves: (1) a computational model of visual
+search — the signed priority field fitted to human first-saccade data; (2)
+the same model, re-instantiated, driving an autonomous agent in the
+reach-avoid task. The formulation below is written so that the transition
+between the two takes three sentences (§5).
 
 ---
 
-## 1. Scope
+## 1. Master equation
 
-- **Models:** the destination of the *first saccade* in displays of discrete
-  items (target, distractors, optional salient singleton), trial by trial,
-  including experience-dependent changes across trials.
-- **v1 deliberately excludes:** saccade latency as a generated output,
-  multi-fixation search, inhibition of return, foveal verification dynamics.
-  Latency enters only as a *conditioning covariate* (§5). A v2 accumulator
-  readout that generates latencies is sketched in §9.
+Over a generic **effector-referenced space** q — the places the effector can
+go: display locations for the eyes, movement directions for the body —
 
-## 2. One-sentence statement
+**F(q) = gain(q) ⊗ Σ_c g_c · φ_c(q, t)   →   action = soft readout of F**
 
-Parallel feature maps and transient-weighted contrast (salience) maps,
-combined under goal-driven feature-channel gains, enter a **single signed
-priority field** weighted on entry by an **a priori gain map** — oculomotor
-envelope, cued spatial knowledge, and presence-driven leaky history traces —
-and the field is resolved into a saccade by a readout that is blind to which
-source contributed what.
+- **Channels** φ_c(q,t): transient-weighted evidence maps. *The task supplies
+  the channel list.* Signed channel gains g_c subsume attraction, repulsion,
+  template guidance, and rejection templates in one notation.
+- **A priori gain map** gain(q) = envelope(q) + h(q): a standing
+  physiological component and an experience-driven component, both set
+  before the stimulus. (Cued spatial knowledge is deliberately excluded —
+  see §7 Design decisions.)
+- **⊗**: additive vs. multiplicative entry of the gain map — an estimable
+  combination rule, not an assumption.
+- **Soft readout**: softmax over F. A *sample* from it is a saccade
+  (ballistic, discrete); the *expectation* under it (activity-weighted
+  vector average — a population vector) is a continuous movement command.
+  Same readout family; the effector determines sample vs. expectation.
+- **Single signed field, source-blind readout**: every source expresses
+  itself only by writing into F; downstream processing sees only the sum.
+  Suppression is negative writing, not a separate pathway.
 
-## 3. Model specification
+## 2. Instantiation table
 
-### 3.1 Front-end (bottom-up)
+| Component | Visual search (eyes) | Reach-avoid (agent) |
+| --- | --- | --- |
+| Space q | Display item locations | Movement directions (360 rays) |
+| Channels φ_c | Color, orientation, size, ... + per-dimension contrast (salience) channel; transient/onset-weighted | Obstacle proximity (transient-weighted = looming) + goal-presence indicator |
+| Channel gains g_c | Template: positive on target features ("what" knowledge); optional negative = rejection template; gain on the salience channel = singleton-detection mode | Repulsive gain on the proximity channel; attractive gain on the goal channel |
+| gain(q): envelope | Functional viewing field around fixation (graded, eccentricity-dependent) | Per-ray sensing envelope k (from ego dynamics/sensing range) |
+| gain(q): history h | Presence-driven leaky traces of target (+) and distractor (−) locations | Presence-driven leaky traces of goal (+) and threat (−) bearings (§6) |
+| Readout | Softmax sample → first saccade | Softmax expectation → (fx, fy) each step |
+| Parameterization | ~8–10 fitted scalars (measurement job) | Learned network weights (competence job), or the parametric potential-field control law |
 
-For each item/location ℓ:
+Note the last row's symmetry: the potential-field expert the agent imitates
+*is* the parametric instantiation of the master equation in the action
+domain (channels × signed gains → vector readout). Parametric at ~10
+parameters when the job is explaining humans; learned at ~261k weights when
+the job is acting. Capacity scales with the job; structure does not change.
 
-- **Feature channels** φ_c(ℓ): raw local feature values per dimension
-  (color, orientation, size, ...). Kept un-collapsed so the template can
-  weight them.
-- **Contrast maps**: per-dimension local feature contrast (center–surround
-  oddity), summed into a salience signal s(ℓ). This is a different
-  computation from φ (relative, context-dependent), not a redundant copy;
-  it is what task-independent capture rides on.
-- **Transient weighting**: bottom-up signals are weighted by temporal change
-  (onsets, motion). In static displays the display-onset transient is
-  spatially uniform (no differential priority); differential transients
-  exist only when the paradigm creates them (new objects vs. placeholders).
+## 3. Search instantiation, v1 details
 
-### 3.2 Top-down and a priori sources
-
-- **Goal template (feature space, phasic):** a signed gain vector g over
-  feature channels, set before display onset by instruction/task set.
-  Template evidence at ℓ: T(ℓ) = Σ_c g_c φ_c(ℓ). Negative components are
-  templates for rejection. "Search mode" (Bacon & Egeth) = where the gain
-  sits: on specific feature channels (feature-search mode) vs. on the
-  salience channel itself (singleton-detection mode).
-- **A priori gain map (location space):** gain(ℓ) = envelope(ℓ) + cue(ℓ) +
-  h(ℓ), fixed within a trial:
-  - *Oculomotor envelope*: graded eccentricity-dependent sensitivity around
-    current fixation (functional viewing field) plus saccade-cost biases.
-    Observer-specific width is a fitted parameter.
-  - *Cued spatial knowledge*: explicit advance "where" information (spatial
-    precue, instruction, scene priors). Structurally absent in tasks without
-    cues.
-  - *History traces*: see §4.
-
-### 3.3 The field
-
-F(ℓ) = gain(ℓ) ⊗ [ s(ℓ) + T(ℓ) ]
-
-- **Single and signed**: all sources express themselves only by writing into
-  F; suppression is negative writing, not a separate pathway.
-- **Source-blind readout**: downstream processing sees only the sum. This is
-  the commitment that makes source-ablation diagnostics meaningful (§7).
-- **⊗ is an estimable combination rule** (additive vs. multiplicative entry
-  of the gain map), not an assumption. The two rules predict top-down
-  effects that are constant (additive) vs. salience-scaled (multiplicative).
-
-### 3.4 Readout (v1: endpoint only)
-
-P(first saccade → item i) = softmax_i ( F(i) / τ )
-
-- Conditional-logit likelihood; τ absorbs overall field scale.
-- **Motor repetition** (position priming of the response) is a lagged
-  covariate on the previous saccade vector *in the readout*, quarantined
-  from the history traces so response repetition cannot masquerade as
-  trace learning.
-- **Latency as covariate**: source weights may interact with a fast/slow
-  median split, recovering coarse time-course sensitivity (salience weight
-  predicted higher for fast saccades) without generating latencies.
-- Averaging (between-item) landings have no generative account in v1;
-  assignment/exclusion rules must be pre-registered.
+- **Front-end**: feature channels kept un-collapsed (the template needs
+  channels to weight); per-dimension local contrast summed into a salience
+  channel (what task-independent capture rides on — its default weight w_s
+  is the Theeuwes/Folk dial). Transients: differential only when the
+  paradigm creates them (new objects vs. placeholders); a static display's
+  onset transient is spatially uniform.
+- **Readout**: conditional logit — P(first saccade → item i) = softmax_i
+  F(i)/τ, with τ fixed as the unit of measurement. Motor repetition
+  (position priming of the response) is a lagged covariate in the readout,
+  quarantined from the history traces. Latency is a conditioning covariate
+  only (fast/slow split interacting with source weights); v1 does not
+  generate latencies. Averaging (between-item) landings need pre-registered
+  assignment/exclusion rules.
+- **Excluded from v1**: latency generation, multi-fixation search,
+  inhibition of return, foveal verification. The v2 accumulator readout
+  (leaky competing accumulators over a motor map; threshold crossing =
+  latency, activity-weighted centroid = endpoint; recovers the global
+  effect and the latency–capture trade-off) is a swappable module — all
+  v1 field-side fits carry over.
 
 ## 4. Selection history: presence-driven leaky traces
 
-Two location-indexed traces (target, distractor), each updated every trial:
+Location-indexed traces, one per event type (target, distractor), updated
+every trial:
 
-h_{t+1}(ℓ) = (1 − η) · h_t(ℓ) + η · e_t(ℓ)
+h_{t+1}(q) = (1 − η) · h_t(q) + η · e_t(q)
 
-- **Presence-driven (adopted design decision):** e_t(ℓ) indicates that a
-  target (+) or distractor (−) *appeared* at ℓ — registration by the
-  front-end, independent of where the saccade went. The update path is
-  front-end → traces; there is no saccade → trace feedback.
-- Two traces with separate (η, β) by default; the single signed trace
-  (η_tgt = η_dist, β_tgt = β_dist) is the nested restriction, testable by
-  model comparison. β (weight of the trace in gain(ℓ)) is separate from η
-  (accrual rate): "stronger selection history" can mean faster buildup or
-  larger asymptote, and the model distinguishes them.
-- Spatial spread: updates convolved with a small kernel (fitted width),
-  matching suppression gradients around high-probability locations.
-- Presence sourced from the *contrast maps* (item as individuated oddity),
-  a weak commitment predicting reduced trace learning for very low-salience
-  items even under presence-driven updating.
+- **Presence-driven (design decision):** e_t(q) marks that a target (+) or
+  distractor (−) *appeared* at q — registration by the front-end,
+  independent of where the saccade went. Update path: front-end → traces.
+  No saccade → trace feedback; the saccade's only history effect is motor
+  repetition, which lives in the readout.
+- Two traces with separate (η, β); the single signed trace (equal rates and
+  weights) is the nested restriction, testable by model comparison. β
+  (weight in gain(q)) is separate from η (accrual rate): rate vs. asymptote.
+- Spatial spread: updates convolved with a small kernel (fitted width).
+- Presence sourced from the contrast maps (item as individuated oddity):
+  predicts reduced trace learning for very low-salience items even under
+  presence-driven updating.
 
-**What presence-driven commits to (falsifiers):** learning rate is a
-property of display statistics, not the observer's behavior — identical
-sequences give identical traces regardless of individual capture rates;
-suppression develops at the same η for distractors that never capture;
-acquisition is simple-exponential (no self-limiting kink); and the
-trial-conditional kernel shows **no** difference following captured vs.
-clean trials at matched history. Violations favor selection-gated updating
-(e updated only on selection) or the hybrid — both remain in the model
-family as alternative update rules.
+**Falsifiers of presence-driven updating:** learning rate must be a
+property of display statistics (identical sequences → identical traces
+regardless of individual capture rates); suppression develops at the same
+η for distractors that never capture; acquisition is simple-exponential;
+the trial-conditional kernel shows no difference following captured vs.
+clean trials at matched history. Violations favor selection-gated or
+hybrid update rules, which remain in the family as alternatives.
 
-**Fitting:** η, β (and the kernel width) are identified from trial-order
-dynamics of first-saccade choices alone — acquisition curves, lagged-
-regression kernels (influence of a distractor k trials back decays as
-(1−η)^k), and reversal transients. Hierarchical (subjects in tasks) fits
-make "task A induces faster selection-history buildup than task B" a
-posterior contrast on η. Public trial-level datasets (OSF: Gaspelin,
-Theeuwes / van Moorselaar labs) suffice; parameter recovery on synthetic
-data is required before fitting human data.
+**Fitting:** η, β, kernel width identified from trial-order dynamics of
+first-saccade choices (acquisition curves; lagged kernels decaying as
+(1−η)^k; reversal transients). Hierarchical fits make cross-task η
+contrasts ("task A induces faster buildup") posterior statements. Public
+trial-level datasets (OSF: Gaspelin, Theeuwes / van Moorselaar labs)
+suffice; parameter recovery on synthetic data precedes any human fit.
 
-## 5. Task-silencing principle
+## 5. The transition (search → action), in full
 
-The full model is the union of sources writing into the field. A given task
-silences sources through its **input structure**, not through fitted zeros:
+1. The channel list changes with the sensory task: several visual feature
+   channels → one proximity channel plus a goal channel.
+2. The readout changes with the effector: discrete sample (saccade) →
+   continuous expectation (movement vector).
+3. The parameterization regime changes with the job: fitted scalars for
+   measurement → learned weights for competence — with the reach-avoid
+   diagnostics (§8) as evidence that the learned version retains the
+   structure.
 
-- No cue → cue(ℓ) receives no input (drops out structurally).
-- Placeholder displays → no differential transients (transient term
-  spatially uniform).
-- Unbiased location statistics → traces converge to flat.
+Everything else — the signed field, the source-blind readout, the
+transient-weighted channels, the envelope + history gain map, the
+task-silencing principle — is identical by construction.
 
-Parameters receiving no variance from the design are **fixed, not fitted**
-(a fitted zero on an unidentifiable parameter is noise). Cross-paradigm
-constancy of shared parameters (envelope width, τ, η) is itself a testable
-claim.
+## 6. Agent-side selection-history experiments
 
-## 6. Modifications from the original ES2 model
+The reach-avoid goal is *known* per trial (it is in the observation), so a
+target trace cannot aid localization; what it predicts is **anticipation**:
 
-| Component | Original ES2 (this repo) | Search model | Status |
-| --- | --- | --- | --- |
-| Input | Two consecutive 360-ray LiDAR scans | Feature channels + per-dimension contrast maps over display items | **Replaced** (front-end swap) |
-| Temporal structure | Scan delta × proximity (looming detector) | Transient/onset weighting of bottom-up signals | **Preserved** (same commitment, new stimulus) |
-| A priori envelope | Learned per-ray k (sensing envelope from ego dynamics) | Graded oculomotor envelope (functional viewing field) + cue + history traces | **Generalized** (one parameter vector → three-source gain map) |
-| Goal channel | Spatial bump at known goal bearing (goal_es2.py) | Feature-channel gain vector g ("what" knowledge); spatial bump remains the degenerate known-location case | **Generalized** (writes into the space the ego has advance knowledge of) |
-| Field | Single signed 360-dim field; sources superimposed; readout source-blind | Same, over display locations | **Preserved** (core identity) |
-| Combination rule | Envelope multiplicative (inside sigmoid), goal additive | ⊗ estimable (additive vs. multiplicative) | **Promoted** from implementation accident to fitted contrast |
-| Readout | Instantaneous MLP → continuous (fx, fy) each step | v1: softmax over items → discrete first saccade (+ motor-repetition covariate); v2: leaky competing accumulators → endpoint and latency | **Replaced** |
-| Learning | Offline behavior cloning of a potential-field expert; no test-time learning | Parameters fit to human choices; history traces update online (presence-driven, rate η) | **Replaced / New** — see §7 for why this is forced |
-| Coordinates | Egocentric movement directions (action-referenced) | Retinotopic/display locations = saccade goal space (action-referenced) | **Preserved** (effector-referenced field) |
+- **Exposure**: goals spawn preferentially in one region (e.g., 70% one
+  quadrant). Online trace over bearings updated each step from the observed
+  goal bearing (presence-driven), entering the field as +β·h(q). Bolted
+  onto the frozen trained agent; no retraining.
+- **Predictions**: (a) between-goal positioning drifts toward the frequent
+  region; (b) faster time-to-goal for frequent-region goals at matched
+  spawn distance, with the mirror-image collateral cost for rare-region
+  goals; (c) both effects persist into an unbiased test block, decaying at
+  rate η — the defining selection-history signature.
+- **Symmetry run**: the same rule with negative sign in the existing
+  hazard-biased world (threat trace) — one presence-driven mechanism
+  producing facilitation and suppression, mirroring the target/distractor
+  trace pair on the search side.
 
-**Inherited commitments (the model's identity):** (1) one signed field,
-source-blind readout; (2) a priori parametric weighting of evidence entry,
-set by the observer's state before the stimulus; (3) transient-weighted
-bottom-up input; (4) effector-referenced coordinates. Dropping any of these
-makes the model a notational variant of Guided Search; keeping them makes it
-a falsifiable member of the priority-map family with a cross-domain
-instantiation.
+Combined with the existing behavior-cloning null (§8), the selection-history
+story is parallel across domains: *the slot exists (architecture); imitation
+cannot fill it (null); one presence-driven rule fills it with both signs
+(positive); the same rule's rate is what the human fits estimate (η).*
 
-## 7. Supporting evidence from this repo's simulations
+## 7. Design decisions on record
 
-(2D-Escaping-Ball reach-avoid extension; see RESULTS_reach_avoid.md.)
+- **No cued spatial knowledge.** Neither the planned search tasks nor the
+  reach-avoid task involves cues; the gain map is envelope + history only.
+  This also excludes scene-prior guidance — appropriate for singleton-type
+  displays; the architecture has an obvious slot should it ever be needed.
+- **Presence-driven trace updating** (not selection-gated); falsifiers in §4.
+- **Presence sourced from contrast maps** (weak commitment; see §4).
+- **v1 models endpoints only**; latency generation deferred to the v2
+  accumulator readout.
+- **Task-silencing principle**: the full model is the union of sources; a
+  task silences sources through input structure (no differential
+  transients under placeholders; flat statistics → flat traces).
+  Parameters receiving no variance from the design are fixed, not fitted.
+- **Parametric fitting for the search job** (~8–10 named scalars,
+  hierarchically pooled; τ fixed as unit): the parameters are the
+  scientific deliverable. A flexible neural net fitted to the same data is
+  retained as comparison model and misspecification alarm, not instrument.
+
+## 8. Supporting evidence from this repo's simulations
+
+(2D-Escaping-Ball reach-avoid extension; RESULTS_reach_avoid.md.)
 
 - **Competence:** goal-conditioned ES2 matches the expert's Pareto point
-  (67.6 goals/min @ 0.4 collisions/min); goal-blind baselines reach ~0
-  goals/min.
-- **Source superposition is architectural, not free:** under the goal-swap
-  probe, ES2 (and the goal Transformer) collapse goal-reaching (−97…−100%)
-  with collision rates unchanged, while a capacity-comparable MLP trained on
-  the same data entangles them (collisions double under a wrong goal). The
-  clean dissociation follows from the field structure, not from the task or
-  the data.
-- **The learning rule, not the architecture, is the locus of selection
-  history:** an ES2 agent behavior-cloned in a hazard-biased world (80% of
-  threats on one side) transfers **no** directional asymmetry in k, field,
-  or behavior — the theoretically expected null, because the imitated expert
-  is memoryless. This forces the §4 design: history requires deployment-time
-  updating from experienced statistics (under the presence-driven rule, an
-  online occupancy trace; no reward machinery required).
+  (67.6 goals/min @ 0.4 collisions/min); goal-blind baselines ~0 goals/min.
+- **Structure is architectural, not free:** under the goal-swap probe, ES2
+  (and a goal Transformer) collapse goal-reaching (−97…−100%) with
+  collision rates unchanged; a capacity-comparable MLP on the same data
+  entangles the sources (collisions double under a wrong goal).
+- **The learning rule is the locus of selection history:** an ES2 agent
+  behavior-cloned in a hazard-biased world transfers no directional
+  asymmetry (k, field, or behavior) — the expected null for imitation of a
+  memoryless expert, motivating the online traces of §6.
 
-## 8. Debates engaged as parameters
+## 9. Parameters
 
-| Debate | Model expression |
-| --- | --- |
-| Stimulus-driven capture (Theeuwes) vs. contingent capture (Folk) | Default weight on the salience channel: nonzero fixed vs. fully task-set-controlled |
-| Proactive suppression vs. capture-then-disengage vs. passive transient decay | Sign/baseline of suppression sources at t=0 vs. their onset latency vs. no suppression term (mostly a v2/time-course question; v1 touches it only via the fast/slow covariate split) |
-| Search modes (singleton-detection vs. feature-search) | Which channel g targets (salience vs. specific features) |
-| One selection-history mechanism or two | Single signed trace as nested restriction of the two-trace model |
-| Rate vs. strength of selection history | η vs. β, separately fitted |
-| What teaches attention (presence / selection / hybrid) | Update-rule variants for e_t; presence-driven adopted, falsifiers stated in §4 |
-| Additive vs. multiplicative top-down modulation | The ⊗ combination rule |
+**Fitted (search instantiation):** w_s (salience weight), g (template
+strength), σ_env (envelope width), η_tgt, η_dist, β_tgt, β_dist, σ_h (trace
+kernel width), w_rep (+ decay), ε (lapse). τ fixed as unit. Typical
+single-experiment identifiable subset: ~8.
 
-## 9. v2 roadmap (documented, not committed)
+**State, not parameters:** the traces h(q) — deterministic given the trial
+sequence and η; estimated never, generated always.
 
-- **Accumulator readout:** leaky competing accumulators over a motor map,
-  driven by a time-varying field (fast salience ramp, slow template ramp,
-  gain map constant); threshold crossing yields latency, activity-weighted
-  centroid yields endpoint. Recovers the global effect and the
-  latency–capture trade-off as emergent properties; enables the
-  proactive-vs-reactive arbitration on time-resolved data. Readout is a
-  swappable module so all v1 field-side fits carry over.
-- **Simulation counterpart:** presence-driven online occupancy trace on the
-  frozen hazard agent's per-ray gain (the predicted positive condition for
-  the §7 null).
-- Feature-history traces (priming of pop-out) as the feature-space analog of
-  the location traces.
+**Set by the task:** channel list, which channels g targets, event
+sequences e_t, display geometry.
+
+**Model-comparison forks (discrete):** ⊗ additive vs. multiplicative; two
+traces vs. single signed trace; presence-driven vs. selection-gated
+(committed, falsifiable); contrast- vs. channel-sourced presence.
 
 ## 10. Relation to existing models
 
-Kin to Guided Search (guidance = weighted feature channels + bottom-up
-contrast + history + scene priors) and salience/priority-map theory
-(Itti–Koch; Fecteau & Munoz); the field-as-valence reading descends from
-Lewin's field theory, and the locomotor instantiation is an additive
-goal+obstacle behavioral dynamics model in the Fajen–Warren lineage. The
-distinctive claims are the four inherited commitments (§6) plus the
-cross-domain evidence (§7) that the field structure — not capacity, data, or
-task — is what yields modular, causally testable goal conditioning.
+Kin to Guided Search (weighted feature channels + bottom-up contrast +
+history) and salience/priority-map theory (Itti–Koch; Fecteau & Munoz); the
+field-as-valence reading descends from Lewin, and the action instantiation
+is an additive goal+obstacle behavioral dynamics model in the Fajen–Warren
+lineage. Distinctive claims: one signed source-blind field; a priori
+parametric entry weighting from the ego's state; transient-weighted input;
+effector-referenced coordinates — and the cross-domain evidence that this
+structure, not capacity or data, yields modular, causally testable
+goal conditioning.
