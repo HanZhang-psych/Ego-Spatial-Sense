@@ -141,12 +141,34 @@ centering artifact — under unbiased goals the trace centroid converges to the
 arena center, which still pulls the agent centerward — not residual quadrant
 history.
 
-**Speed benefit — reversed: interference instead.** Normalized pursuit speed
-in the exposure block shows frequent-region goals *slower* in the trace arm
-(30.2 steps/100px vs. 13.8 control; absolute 74.9 steps despite the shorter
-spawn distance), with only mild drag for rare goals (16.0 vs. 14.2). The
-trace bump and a nearby real goal are competing attractors in the same field
-region, and the competition costs more than the pre-positioning saves.
+**Speed effect — a congruency structure, hidden by the region average.** The
+frequent/rare split initially suggested pure interference (frequent goals
+30.2 steps/100px vs. 13.8 control). Separating goals by their distance from
+the trace centroid (re-run with position logging, `anticipation_v2_*.csv`;
+identical seeds/RNG) reveals the real profile (exposure block):
+
+| goal vs. centroid | trace | control | effect |
+| --- | --- | --- | --- |
+| <100px (history valid, n=45/51) | 13.8 steps (9.7/100px) | 27.4 (10.7/100px) | ~2x faster |
+| 100–250px (near miss, n=203/228) | 79.3 (31.7/100px) | 41.2 (14.2/100px) | ~2x slower |
+| >250px (clearly wrong, n=112/81) | 70.4 (22.0/100px) | 47.3 (15.1/100px) | moderate headwind |
+
+History-valid goals get a compound benefit — pre-positioning (spawn distance
+124 vs. 254px) plus tailwind, confirmed per-distance — while the cost
+concentrates in the near-miss ring, where the centroid bump competes with
+the goal in the endgame (the displaced-minimum hover). This is the
+congruency profile of human probability cueing: benefit at the frequent
+location, cost at near-misses. "Residual influence during pursuit can only
+distort" is therefore too strong: an informationally redundant prior is
+mechanically helpful exactly to the degree it points where the goal is; the
+distortion comes from its error component only.
+
+The net-negative *average* traces to a resolution mismatch: the true goal
+distribution is a quadrant, but the leaky-centroid trace is a point prior,
+so most frequent goals land in its near-miss ring (203 vs. 45). The model
+spec's trace kernel width σ_h is the missing piece; prediction: net payoff
+improves monotonically as the trace's spread approaches the true spawn
+spread.
 
 Interpretation: the payoff structure follows from *where in the trial the
 uncertainty sits*. During the goal-free period the agent knows nothing about

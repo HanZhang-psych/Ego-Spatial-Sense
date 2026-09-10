@@ -114,6 +114,7 @@ def run_arm(model, args, seed, beta):
             # only beta>0 injects it).
             cx = (1 - args.eta) * cx + args.eta * goal[0]
             cy = (1 - args.eta) * cy + args.eta * goal[1]
+            spawn_px, spawn_py = player.x, player.y
             spawn_dist = math.hypot(goal[0] - player.x, goal[1] - player.y)
             steps = 0
             reached = False
@@ -125,7 +126,10 @@ def run_arm(model, args, seed, beta):
                     break
             goal_rows.append(
                 [block, gi, "frequent" if in_quadrant(goal) else "rare",
-                 round(spawn_dist, 1), steps, int(reached)]
+                 round(spawn_dist, 1), steps, int(reached),
+                 round(goal[0], 1), round(goal[1], 1),
+                 round(spawn_px, 1), round(spawn_py, 1),
+                 round(cx, 1), round(cy, 1)]
             )
             # Goal-free period: zero goal fed.
             dists = []
@@ -216,7 +220,9 @@ def main():
 
     with open(f"{args.out_prefix}_goals.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["arm", "block", "goal_idx", "region", "spawn_dist", "steps", "reached"])
+        w.writerow(["arm", "block", "goal_idx", "region", "spawn_dist", "steps",
+                    "reached", "goal_x", "goal_y", "spawn_px", "spawn_py",
+                    "trace_cx", "trace_cy"])
         for arm in ["trace", "control"]:
             for r in all_rows[arm][0]:
                 w.writerow([arm] + r)

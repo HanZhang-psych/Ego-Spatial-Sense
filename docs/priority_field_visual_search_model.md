@@ -185,14 +185,24 @@ probability-cueing paradigm should abolish the within-trial
 frequent-location benefit while leaving any residual history effect only
 pre-onset (e.g., anticipatory gaze bias before display onset).
 
-A β=0.05 follow-up found a gain window bounded below by the environment's
-1px actuation quantization (no drift, residual pursuit drag), so the
-static always-on injection admits no net-positive gain in this
-environment. This motivates the principled refinement: **pursuit-time
-normalization** — the history prior yields when a fully observed goal
-supersedes it — plausibly why human history effects are small during
-explicit goal-directed action. Normalization across field sources is a
-candidate v2 component for both instantiations.
+Separating goals by distance from the trace centroid recovered the
+**congruency structure** the region average hid: history-valid goals
+(within 100px of the centroid) are reached ~2x *faster* (compound
+pre-positioning + tailwind), near-miss goals (100–250px ring) ~2x slower
+(endgame attractor competition), clearly-wrong goals pay a mild headwind —
+the probability-cueing profile (benefit at the frequent location, cost at
+near-misses). The net-negative average is a resolution mismatch: the true
+goal distribution is a quadrant but the leaky-centroid trace is a point
+prior, so most goals land in its near-miss ring. The spec's trace kernel
+width σ_h is the missing component; prediction: net payoff improves as
+trace spread approaches the true spawn spread.
+
+A β=0.05 follow-up additionally found a gain window bounded below by the
+environment's 1px actuation quantization (no drift, residual pursuit
+drag). Together these motivate two v2 refinements: **spread-matched
+traces** (σ_h) and **pursuit-time normalization** (the prior yields when a
+fully observed goal supersedes it) — the latter plausibly why human
+history effects are small during explicit goal-directed action.
 
 Combined with the existing behavior-cloning null (§8), the selection-history
 story is parallel across domains: *the slot exists (architecture); imitation
