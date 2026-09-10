@@ -137,14 +137,24 @@ The reach-avoid goal is *known* per trial (it is in the observation), so a
 target trace cannot aid localization; what it predicts is **anticipation**:
 
 - **Exposure**: goals spawn preferentially in one region (e.g., 70% one
-  quadrant). Online trace over bearings updated each step from the observed
-  goal bearing (presence-driven), entering the field as +β·h(q). Bolted
-  onto the frozen trained agent; no retraining.
-- **Predictions**: (a) between-goal positioning drifts toward the frequent
-  region; (b) faster time-to-goal for frequent-region goals at matched
+  quadrant), separated by explicit **goal-free periods** (~100–200 steps
+  with no goal present). Online trace over bearings updated each step from
+  the observed goal bearing (presence-driven), entering the field as
+  +β·h(q). Bolted onto the frozen trained agent; no retraining. During
+  goal-free periods a zero goal vector is fed — in GoalEs2Model this
+  exactly zeroes the phasic goal field (the alignment term vanishes), so
+  behavior is driven by obstacle avoidance + trace alone.
+- **Predictions**: (a) during goal-free periods the agent drifts toward the
+  frequent region — a pure readout of the trace, uncontaminated by any
+  active goal; (b) faster time-to-goal for frequent-region goals at matched
   spawn distance, with the mirror-image collateral cost for rare-region
   goals; (c) both effects persist into an unbiased test block, decaying at
-  rate η — the defining selection-history signature.
+  rate η — persistence despite *cost* (the drift now lengthens paths to
+  goals elsewhere), the strongest form of the selection-history signature.
+- The trace injects into the same field the frozen action head reads, so
+  drift also tests whether the head's field→action mapping generalizes to
+  a source it was never trained on — the source-blindness commitment
+  cashed out behaviorally.
 - **Symmetry run**: the same rule with negative sign in the existing
   hazard-biased world (threat trace) — one presence-driven mechanism
   producing facilitation and suppression, mirroring the target/distractor
@@ -161,6 +171,13 @@ cannot fill it (null); one presence-driven rule fills it with both signs
   reach-avoid task involves cues; the gain map is envelope + history only.
   This also excludes scene-prior guidance — appropriate for singleton-type
   displays; the architecture has an obvious slot should it ever be needed.
+- **Transient weighting: silenced, not deleted.** The planned search tasks
+  use static, simultaneous-onset displays, so the transient weighting is
+  spatially uniform — nothing to implement or fit in v1 (task-silencing).
+  It stays in the master equation's channel definition because it is what
+  makes the cross-domain channel correspondence exact (transient-weighted
+  proximity = looming, the most distinctively biological ES2 component),
+  and it keeps onset-capture paradigms reachable without model changes.
 - **Presence-driven trace updating** (not selection-gated); falsifiers in §4.
 - **Presence sourced from contrast maps** (weak commitment; see §4).
 - **v1 models endpoints only**; latency generation deferred to the v2
