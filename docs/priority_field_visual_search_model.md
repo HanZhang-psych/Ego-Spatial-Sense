@@ -167,18 +167,23 @@ exposure; spawn distances to frequent goals shortened 282→235px), and the
 frozen source-blind head translated the never-trained trace source into
 coherent behavior. Persistence confirmed with decay over ~1/η unbiased
 goals (late-test residual identified as a centering artifact of the
-centroid trace). The speed prediction *reversed*: with the goal location
-known, the trace is a competing attractor, slowing frequent-region pursuit
-(30.2 vs. 13.8 steps/100px) — an anticipatory spatial prior has no
-uncertainty to reduce in this task, so it can only interfere.
+centroid trace). The speed prediction *reversed*: during pursuit the trace
+is a competing attractor, slowing frequent-region pursuit (30.2 vs. 13.8
+steps/100px).
 
-This reversal sharpens the theory rather than damaging it: **history priors
-pay off only under target uncertainty.** Location-probability learning
-helps search because the target must be found; the model predicts that a
-fully valid location cue added to a probability-cueing paradigm should
-erase or invert the frequent-location benefit — a human-testable
-prediction, and the reason the search and action instantiations of the
-same trace mechanism have opposite-signed net payoffs.
+The reversal sharpens the theory: the payoff structure follows from *where
+in the trial the uncertainty sits*. During the goal-free period the agent
+knows nothing about the next goal except through the trace — genuine
+anticipatory uncertainty, reduced by the prior and cashed out physically as
+drift and pre-positioning. At goal onset the goal's location enters the
+observation and the prior becomes informationally redundant, so residual
+influence during pursuit can only distort. Search differs in that
+uncertainty *persists after onset* (the target must still be found), which
+is why the same trace mechanism yields within-trial benefits there.
+Human-testable prediction (two-part): a fully valid location cue added to a
+probability-cueing paradigm should abolish the within-trial
+frequent-location benefit while leaving any residual history effect only
+pre-onset (e.g., anticipatory gaze bias before display onset).
 
 Combined with the existing behavior-cloning null (§8), the selection-history
 story is parallel across domains: *the slot exists (architecture); imitation

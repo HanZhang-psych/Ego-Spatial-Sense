@@ -148,13 +148,24 @@ spawn distance), with only mild drag for rare goals (16.0 vs. 14.2). The
 trace bump and a nearby real goal are competing attractors in the same field
 region, and the competition costs more than the pre-positioning saves.
 
-Interpretation, and a human-testable prediction: in this task the goal's
-location is *known*, so an anticipatory spatial prior has no uncertainty to
-reduce — it can only interfere. Location-probability learning pays off in
-search precisely because the target must be *found*; the model therefore
-predicts that adding a fully valid location cue to a probability-cueing
-paradigm should erase or invert the frequent-location benefit. History priors
-are worth their interference only under target uncertainty.
+Interpretation: the payoff structure follows from *where in the trial the
+uncertainty sits*. During the goal-free period the agent knows nothing about
+the next goal except through the trace — genuine anticipatory uncertainty,
+which the prior reduces, and its benefit is realized physically as goalless
+drift toward the likely region (the shorter spawn distances). At goal onset,
+however, the goal's exact location enters the observation and the prior
+becomes informationally redundant — everything it knows is superseded — so
+any residual influence during pursuit can only distort (and does, because
+this implementation leaves the trace on at constant strength). Search
+differs precisely in that uncertainty *persists after onset*: the target
+must still be found, so the prior stays informative within the trial.
+
+Human-testable prediction (two-part): adding a fully valid location cue to a
+probability-cueing paradigm moves it from the search regime to this one —
+the within-trial frequent-location benefit should vanish (the cue supersedes
+the prior), while any residual history effect should survive only
+pre-onset, e.g. as anticipatory gaze bias toward the frequent region before
+the display appears.
 
 Collisions: 11 (trace) vs. 6 (control) across ~230k steps — avoidance largely
 intact. Raw data: `anticipation_goals.csv`, `anticipation_goalfree.csv`.
