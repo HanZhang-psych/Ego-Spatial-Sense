@@ -103,6 +103,30 @@ spatial field from the trained agent. The fit is population-level only (no
 per-subject layer — individual differences are out of scope, §7);
 uncertainty on pooled estimates via bootstrap over subjects.
 
+**Why scalar gains in search but gain networks in the agent
+(manuscript-ready justification).** The apparent asymmetry — single
+fitted numbers (g_T, g_S) on the search side, small learned networks on
+the agent side — is not a difference in model but a difference in what
+the two tasks allow the same component to express. A channel gain is,
+in general, a function of the channel's input: in the reach-avoid task,
+goal distance and obstacle proximity vary continuously, the appropriate
+gain differs across that range (attraction tapers near the goal;
+repulsion scales with proximity), and the demonstrations exercise the
+full input range, so the gain must be, and can be, estimated as a
+function — hence the small network. In the search task the display
+geometry freezes the gain's input: every item lies at the same
+eccentricity, and template match and singleton status are binary, so
+the gain function is only ever evaluated at a single point per channel,
+and its most general identifiable form *is* one number. The scalar is
+not a simplification of the gain block but its value under the task's
+input distribution — the same task-silencing principle that leaves the
+attention window formally present but inert for first saccades on an
+iso-eccentric ring. The degeneracy is reversible: from the second
+saccade onward item-to-fixation distances vary, restoring the input
+axis, and the search-side gain can be estimated as the same
+distance-dependent function the agent learns, with no change to the
+model.
+
 ## 3. Search instantiation, v1 details
 
 - **Front-end**: feature channels kept un-collapsed (the template needs
