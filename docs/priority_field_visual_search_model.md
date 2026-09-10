@@ -160,10 +160,31 @@ target trace cannot aid localization; what it predicts is **anticipation**:
   producing facilitation and suppression, mirroring the target/distractor
   trace pair on the search side.
 
+**Outcome (run 2026-09-10; anticipation_experiment.py, β=0.15, η=0.05, 3
+seeds; details in RESULTS_reach_avoid.md):** anticipatory drift confirmed
+(goal-free distance to the frequent region falls 162→~110px across
+exposure; spawn distances to frequent goals shortened 282→235px), and the
+frozen source-blind head translated the never-trained trace source into
+coherent behavior. Persistence confirmed with decay over ~1/η unbiased
+goals (late-test residual identified as a centering artifact of the
+centroid trace). The speed prediction *reversed*: with the goal location
+known, the trace is a competing attractor, slowing frequent-region pursuit
+(30.2 vs. 13.8 steps/100px) — an anticipatory spatial prior has no
+uncertainty to reduce in this task, so it can only interfere.
+
+This reversal sharpens the theory rather than damaging it: **history priors
+pay off only under target uncertainty.** Location-probability learning
+helps search because the target must be found; the model predicts that a
+fully valid location cue added to a probability-cueing paradigm should
+erase or invert the frequent-location benefit — a human-testable
+prediction, and the reason the search and action instantiations of the
+same trace mechanism have opposite-signed net payoffs.
+
 Combined with the existing behavior-cloning null (§8), the selection-history
 story is parallel across domains: *the slot exists (architecture); imitation
-cannot fill it (null); one presence-driven rule fills it with both signs
-(positive); the same rule's rate is what the human fits estimate (η).*
+cannot fill it (null); one presence-driven rule fills it and the frozen
+head expresses it (positive); its payoff sign depends on target uncertainty
+(reversal); the same rule's rate is what the human fits estimate (η).*
 
 ## 7. Design decisions on record
 

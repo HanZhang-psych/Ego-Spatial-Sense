@@ -61,6 +61,7 @@ from pairing frames across resets).
 | `model/goal_mlp.py`, `model/goal_transformer.py` | Goal-conditioned MLP / Transformer baselines (same 722-feature input) |
 | `train_goal_baseline.py` | Trainer for the two baselines (`--model mlp|transformer`) |
 | `selection_history_probe.py` | Selection-history probe: hazard-biased training vs. unbiased control (see below) |
+| `anticipation_experiment.py` | Online presence-driven target-history trace on the frozen agent: goal-biased exposure with goal-free periods, unbiased test block, β=0 control arm |
 
 ## Reproduce
 

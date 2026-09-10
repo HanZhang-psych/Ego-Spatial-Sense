@@ -114,6 +114,51 @@ positive condition (untested): the same architecture trained or fine-tuned
 with outcome signals (collision penalties / an online gain-map update rule)
 in the hazard world should develop the asymmetry.
 
+## Anticipation experiment (online target-history trace): positive, with an instructive reversal
+
+Design (`anticipation_experiment.py`): a presence-driven leaky trace of goal
+spawn positions (leaky centroid, rate η=0.05 per spawn) is bolted onto the
+frozen goal_es2 agent and written into the field through the model's own
+goal-field machinery at gain β=0.15. Exposure block: 120 goals, 70% in one
+quadrant, each followed by a 100-step goal-free period (zero goal vector fed —
+this exactly silences the phasic goal channel, so goal-free behavior reads out
+the trace alone). Test block: 80 unbiased goals. Control arm: β=0, same
+seeds (42–44, 3 seeds).
+
+**Anticipatory drift — confirmed.** Goal-free distance to the frequent-quadrant
+center falls across exposure in the trace arm (162 → ~110 px over 120 goals;
+control fluctuates around 150–185 with no trend), and the agent is
+pre-positioned for frequent goals: mean spawn distance 235 px vs. 282 px
+(control) / 320 px (rare goals). The frozen action head translated a field
+source it was never trained on into coherent drift — the source-blindness
+commitment passing a behavioral generalization test.
+
+**Persistence — confirmed, with an honest decomposition.** Early-test
+goal-free bias remains (193 px in the first 10 test goals) and decays over
+~20–30 unbiased goals, consistent with the trace time constant (1/η = 20
+events). The residual late-test offset (~210–215 vs. control ~230) is a
+centering artifact — under unbiased goals the trace centroid converges to the
+arena center, which still pulls the agent centerward — not residual quadrant
+history.
+
+**Speed benefit — reversed: interference instead.** Normalized pursuit speed
+in the exposure block shows frequent-region goals *slower* in the trace arm
+(30.2 steps/100px vs. 13.8 control; absolute 74.9 steps despite the shorter
+spawn distance), with only mild drag for rare goals (16.0 vs. 14.2). The
+trace bump and a nearby real goal are competing attractors in the same field
+region, and the competition costs more than the pre-positioning saves.
+
+Interpretation, and a human-testable prediction: in this task the goal's
+location is *known*, so an anticipatory spatial prior has no uncertainty to
+reduce — it can only interfere. Location-probability learning pays off in
+search precisely because the target must be *found*; the model therefore
+predicts that adding a fully valid location cue to a probability-cueing
+paradigm should erase or invert the frequent-location benefit. History priors
+are worth their interference only under target uncertainty.
+
+Collisions: 11 (trace) vs. 6 (control) across ~230k steps — avoidance largely
+intact. Raw data: `anticipation_goals.csv`, `anticipation_goalfree.csv`.
+
 ## Reproduce
 
 See README_reach_avoid.md; all runs used `--device cpu`, seeds 42–46.
