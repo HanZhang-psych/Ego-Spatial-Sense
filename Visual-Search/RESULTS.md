@@ -141,6 +141,43 @@ Design: singleton present 70%; when present, at one HP location 65%
    would argue for a second, slower trace timescale — a concrete,
    pre-registrable model comparison for future data.
 
+## v2: pixel front-end (no shortcut) — results_fit_v2.json
+
+Displays reconstructed per trial (ring geometry; all items in the
+target color, singleton in the opposite color per the data's
+targCol/singCol; template shape at the target), rendered to pixels,
+passed through the Itti & Koch front-end, sampled as ray scans from
+the current fixation, wedge-integrated into per-item channel evidence
+(526 unique displays, 3,062 unique display-fixation contexts). Same
+split, 10 weights.
+
+| Model | held-out NLL/saccade |
+| --- | --- |
+| v2 pixels, no traces | 1.4371 |
+| **v2 pixels, full** | **1.3288** |
+| v1 flags, traces+IoR (reference) | 1.2565 |
+
+- **The cost of honest perception is ~0.07 NLL/saccade.** Role flags
+  are a noiseless ceiling; sensor-derived evidence carries rendering
+  and reconstruction noise. The v2 model still beats v1's no-trace
+  null (1.3665) using no flags at all.
+- **History and IoR are downstream of perception, as claimed**: their
+  weights survive the front-end swap essentially unchanged (beta_T
+  1.71 vs 1.87; beta_D -0.24 vs -0.27; eta_T 0.643 vs 0.627; eta_D
+  0.196 vs 0.173; g_I -2.39 vs -2.01).
+- **First separation of rejection-template vs salience gain**:
+  g_simS = -0.18 (the distractor's color is penalized) with
+  w_sal = +0.11 (raw salience weakly attractive once color is
+  accounted for). Read cautiously: SIM_S and SAL are collinear (both
+  peak at the singleton), the reconstruction's salience computation is
+  ours not the retina's, and the split leans on cross-study color
+  variation — but at face value it favors feature-based rejection over
+  salience-map suppression as the carrier of below-baseline oculomotor
+  suppression.
+- k lands large (~9.8): in v2 the envelope acts on the sensor's range
+  reading, effectively gating wedges by whether/where they contain
+  energy — not comparable to v1's k on geometric distance.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

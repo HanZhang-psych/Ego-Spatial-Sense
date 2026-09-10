@@ -40,7 +40,7 @@ def load_study(path):
     df = pd.read_csv(path, sep="\t", low_memory=False)
     need = ["studyName", "subjNum", "block", "practice", "trial", "saccindex",
             "currloc", "curritem", "normX", "normY", "targLoc", "singLoc",
-            "singPres", "setsize", "keepTrial", "ACC"]
+            "singPres", "setsize", "keepTrial", "ACC", "targCol", "singCol"]
     for c in need:
         if c not in df.columns:
             raise ValueError(f"{os.path.basename(path)} missing column {c}")
@@ -125,6 +125,8 @@ def process_study(df, study_ord):
                 study=study_ord, subj=subj, block=block, trial=trial,
                 saccindex=k, setsize=setsize, choice=dest, fixloc=cur_loc,
                 targLoc=targ, singLoc=sing,
+                targCol=str(head.targCol).lower(),
+                singCol=str(head.singCol).lower(),
                 **{f"d{j}": d[j - 1] for j in range(1, setsize + 1)}))
             if dest == targ or pd.isna(r.normX):
                 break

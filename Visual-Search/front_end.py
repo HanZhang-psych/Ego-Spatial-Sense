@@ -59,6 +59,7 @@ def render(items):
 
 def _gauss_blur(m, sigma):
     k = int(3 * sigma) * 2 + 1
+    k = min(k, (min(m.shape) // 2) * 2 - 1)   # kernel must fit the image
     ax = np.arange(k) - k // 2
     g = np.exp(-ax ** 2 / (2 * sigma ** 2))
     g /= g.sum()
@@ -107,8 +108,7 @@ def ray_scan(maps, fix_xy, n_rays=90, n_bins=48, max_r=1.1):
     range [n_rays] (distance of first above-threshold salience energy).
     Channel order: RG, BY, I, SAL, RGs, BYs (+ FORM if present).
     """
-    names = [k for k in ("RG", "BY", "I", "SAL", "RGs", "BYs", "FORM")
-             if k in maps]
+    names = list(maps.keys())   # any channel set; dict order preserved
     to_px = lambda v: (v + 0.75) / 1.5 * IMG
     fx, fy = to_px(fix_xy[0]), to_px(fix_xy[1])
     # start beyond the fovea: the currently fixated item is not re-sensed
