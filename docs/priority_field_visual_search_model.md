@@ -10,7 +10,7 @@ the action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
 Paper structure this document serves: (1) a computational model of visual
-search — the signed priority field fitted to human first-saccade data; (2)
+search — the signed priority field fitted to human saccade data; (2)
 the same model, re-instantiated, driving an autonomous agent in the
 reach-avoid task. The formulation below is written so that the transition
 between the two takes three sentences (§5).
@@ -75,10 +75,12 @@ history traces are *world-anchored* (glued to display/arena locations,
 re-projected into ego coordinates whenever the ego moves — the agent
 recomputes this projection from its current position every step). So the
 prior is *stimulus*-independent but not *fixation*-independent: it
-reshapes in ego coordinates on every saccade. First-saccade fits from a
-standardized central fixation see a single static map per trial; from
-saccade 2 onward the model predicts a dissociation — distance effects
-follow the eyes, history effects stay glued to display locations.
+reshapes in ego coordinates on every saccade. For the first saccade
+(standardized central fixation) the prior is a single static map per
+trial; from saccade 2 onward the model predicts a dissociation —
+distance effects follow the eyes, history effects stay glued to display
+locations. Since v1 fits saccades 1–5 (§3), this dissociation is
+*tested* in v1, not merely predicted.
 
 ## 2. Instantiation table
 
@@ -89,8 +91,8 @@ follow the eyes, history effects stay glued to display locations.
 | Channel gains g_c | Template: positive on target features ("what" knowledge); optional negative = rejection template; gain on the salience channel = singleton-detection mode | Repulsive gain on the proximity channel; attractive gain on the goal channel |
 | gain(q): envelope | Functional viewing field around fixation (graded, eccentricity-dependent) | Per-ray sensing envelope k (from ego dynamics/sensing range) |
 | gain(q): history h | Presence-driven leaky traces of target (+) and distractor (−) locations | Presence-driven leaky traces of goal (+) and threat (−) bearings (§6) |
-| Readout | Softmax sample → first saccade | Softmax expectation → (fx, fy) each step |
-| Parameterization | Same ES2-style gain blocks, behavior-cloned from ~700k pooled human first saccades (one population-level fit) | Learned network weights, behavior-cloned from expert demonstrations |
+| Readout | Softmax sample → each saccade (1–5), from the current fixation | Softmax expectation → (fx, fy) each step |
+| Parameterization | Same ES2-style gain blocks, behavior-cloned from ~700k pooled human saccades 1–5 (one population-level fit) | Learned network weights, behavior-cloned from expert demonstrations |
 
 Note the last row's symmetry: both instantiations are the *same structured
 network* — channelized gain blocks writing into one signed field — trained
@@ -121,11 +123,12 @@ and its most general identifiable form *is* one number. The scalar is
 not a simplification of the gain block but its value under the task's
 input distribution — the same task-silencing principle that leaves the
 attention window formally present but inert for first saccades on an
-iso-eccentric ring. The degeneracy is reversible: from the second
-saccade onward item-to-fixation distances vary, restoring the input
-axis, and the search-side gain can be estimated as the same
-distance-dependent function the agent learns, with no change to the
-model.
+iso-eccentric ring. The degeneracy is reversible, and v1 exercises the
+reversal: fitting saccades 1–5 restores the distance axis, which v1
+assigns to a single shared envelope falloff (σ_env, estimated) while
+the channel gains stay scalar — the separability assumption stated in
+§3; channel-specific distance profiles, as the agent's gain blocks
+learn, remain an extension requiring no structural change.
 
 ## 3. Search instantiation, v1 details
 
@@ -142,14 +145,30 @@ model.
   attend green, willfully ignore red — not learning (§7). The pre-onset
   spatial prior is the network's field with history + task set only (no
   display) — the ES2 pure-field probe.
-- **Readout**: conditional logit — P(first saccade → item i) = softmax_i
-  F(i)/τ, with τ fixed as the unit of measurement. The bare field →
-  softmax, exactly parallel to the agent's field → action head: no motor
-  covariates, no lapse parameter (scope decision, §7). Positions only:
-  latency is neither generated nor used as a covariate (§7). Averaging
-  (between-item) landings need pre-registered assignment/exclusion rules.
-- **Excluded from v1**: saccade latency (entirely), multi-fixation search,
-  inhibition of return, foveal verification. The v2 accumulator readout
+- **Readout — all saccades 1–5 (as in the source analyses)**: each
+  saccade is its own conditional-logit trial from the *current* fixation
+  — P(saccade → item i) = softmax_i F(i)/τ, τ fixed as the unit of
+  measurement. The bare field → softmax, exactly parallel to the agent's
+  field → action head: no motor covariates, no lapse parameter (§7).
+  For saccade k the ego position is where saccade k−1 landed, so
+  item-to-fixation distances vary and the envelope becomes estimable
+  (its radial falloff σ_env, 1–2 numbers — three probed chord distances
+  on a 6-ring support a monotone falloff, not the full 360° profile).
+  The currently fixated item leaves the choice set; trials truncate at
+  target fixation (post-target saccades are responding, not searching);
+  later-saccade selection effects (target not yet found) are handled by
+  conditioning on the current state. Positions only: latency is neither
+  generated nor used as a covariate (§7). Averaging (between-item)
+  landings need pre-registered assignment/exclusion rules.
+- **Inhibition of return — diagnostic first, parameter only if demanded
+  (§7)**: v1 fits with no IoR term (zero new parameters, maximally
+  agent-like) and checks predicted vs. observed refixation rates; a
+  single visited-item penalty is added only if that diagnostic fails,
+  reported as a model comparison.
+- **Excluded from v1**: saccade latency (entirely), foveal verification,
+  channel-specific distance profiles (v1 assumes one shared envelope
+  falloff — separability; per-channel falloffs, as the agent's gain
+  blocks have, are an extension). The v2 accumulator readout
   (leaky competing accumulators over a motor map; threshold crossing =
   latency, activity-weighted centroid = endpoint; recovers the global
   effect and the latency–capture trade-off) is a swappable module — all
@@ -186,7 +205,7 @@ clean trials at matched history. Violations favor selection-gated or
 hybrid update rules, which remain in the family as alternatives.
 
 **Fitting:** η, β, kernel width identified from trial-order dynamics of
-first-saccade choices (acquisition curves; lagged kernels decaying as
+saccade choices (acquisition curves; lagged kernels decaying as
 (1−η)^k; reversal transients). One pooled fit per task; cross-task η
 contrasts ("task A induces faster buildup") compare pooled estimates
 across tasks (bootstrap over subjects for uncertainty). Public
@@ -322,8 +341,17 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 - **Presence sourced from contrast maps** (weak commitment; see §4).
 - **Positions only (scope decision).** Saccade latency is entirely out of
   scope — neither generated nor used as a covariate or gain input. The
-  model explains *where* first saccades go, never *when*. (Latency
+  model explains *where* saccades go, never *when*. (Latency
   generation would be the v2 accumulator readout, deferred.)
+- **All saccades 1–5 in scope (revised from first-saccade-only),**
+  matching the source paper's own saccade-index analysis. Each saccade
+  is a conditional-logit trial from the current fixation; this is what
+  makes the attention window estimable (§3) and turns the ego-anchored
+  vs. world-anchored dissociation (§1.1) into a tested prediction.
+- **IoR: try none first.** v1 carries no inhibition-of-return term; the
+  predicted vs. observed refixation rate is a reported diagnostic, and
+  a single visited-item penalty is added only if it fails (model
+  comparison, not assumption).
 - **No individual differences (scope decision).** One population-level
   fit; no per-subject parameter layer. Uncertainty on pooled estimates
   via bootstrap over subjects.
@@ -348,7 +376,7 @@ head expresses it (positive); its payoff sign depends on target uncertainty
   Parameters receiving no variance from the design are fixed, not fitted.
 - **Neural instantiation for the search model (revised decision).** The
   search model is the same structured network as the agent — channelized
-  gain blocks trained by maximum likelihood on pooled human first saccades
+  gain blocks trained by maximum likelihood on pooled human saccades (1–5)
   — rather than a hand-parameterized field. This keeps the search model
   maximally close to ES2 and lets the spatial prior be *derived from the
   trained network* (pre-onset probe), as the original paper derives the
@@ -374,17 +402,18 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 
 ## 9. Parameters
 
-**Trained (one pooled fit, positions only):** 6 numbers doing all the
-work, behavior-cloned by MLE on first-saccade destinations across all
-subjects and studies —
+**Trained (one pooled fit, positions only, saccades 1–5):** 7–8 numbers
+doing all the work, behavior-cloned by MLE on saccade destinations
+across all subjects and studies —
 g_T (template gain, static); g_S (salience/rejection gain, static, one
 number — task set, not learning, §7); β_tgt, β_dist, η_tgt, η_dist
-(location traces). τ fixed as unit. No latency terms, no per-subject layer, no
-motor-repetition or lapse terms — the readout is the bare field →
-softmax, as in the agent. σ_env (the attention
-window) is architecturally present but task-silenced for first saccades
-on an iso-eccentric ring (envelope constant across items); it becomes
-fittable only for saccades 2+.
+(location traces); σ_env (attention-window radial falloff, 1–2 numbers
+— estimable because saccades 2+ vary item-to-fixation distance; silent
+within the first-saccade subset, where all items are iso-eccentric).
+τ fixed as unit. No latency terms, no per-subject layer, no
+motor-repetition or lapse terms, no IoR term unless the refixation
+diagnostic demands one (§7) — the readout is the bare field → softmax,
+as in the agent.
 
 **State, not parameters:** the traces h(q) — deterministic given the trial
 sequence and η; estimated never, generated always.
