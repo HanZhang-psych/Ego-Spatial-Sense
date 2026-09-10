@@ -276,6 +276,23 @@ block, and trial-timescale decay. Collisions are elevated equally in both
 arms by the teleports (24 vs. 22 over ~260k steps) — a property of the
 reset protocol, not of the trace.
 
+**Why the excursion stops at the region's edge (diagnostic).** Controlled
+anticipation periods with a pre-built trace show the excursion is an
+*equilibrium*, not slow progress: with balls removed the agent settles at
+141 ± 5 px from the region center whether given 80 or 240 steps —
+essentially the region boundary (half-extent 130 px). Balls are not the
+limiter (with balls: 121 ± 64 — slightly closer on average, with jostling
+variance; avoidance adds noise, not resistance), and forces are well above
+the 1 px actuation floor. The cause is the spread trace's plateau: inside
+the mass of remembered locations the bumps cancel, so the inward gradient
+dies at the edge, and β sets the equilibrium depth (β=0.40 would settle at
+77 px, inside the region). With β fixed at 0.15 — a deliberate
+parsimony/no-tuning decision — the model's honest prediction is that the
+agent **waits at the threshold of the likely region rather than at its
+center**, short of the expected-distance-optimal waiting point.
+Context-dependent expression (gating β by goal presence, i.e. pursuit-time
+normalization) remains documented future work, not implemented.
+
 ## Reproduce
 
 See README_reach_avoid.md; all runs used `--device cpu`, seeds 42–46.
