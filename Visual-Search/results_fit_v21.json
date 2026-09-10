@@ -1,0 +1,38 @@
+{
+  "v21_null_no_traces": {
+    "params": {
+      "g_T": 0.5248,
+      "g_O": -0.0147,
+      "w_p": 0.2356,
+      "g_form": 1.1634,
+      "k": 0.0503,
+      "beta_T": 0.0,
+      "beta_D": 0.0,
+      "eta_T": 0.5,
+      "eta_D": 0.5,
+      "g_I": 0.0
+    },
+    "train_nll_per_saccade": 1.3547743558883667,
+    "test_nll_per_saccade": 1.3530527353286743
+  },
+  "v21_full": {
+    "params": {
+      "g_T": 0.5827,
+      "g_O": -0.0047,
+      "w_p": 0.2494,
+      "g_form": 1.2422,
+      "k": 0.0516,
+      "beta_T": 1.8707,
+      "beta_D": -0.2667,
+      "eta_T": 0.6298,
+      "eta_D": 0.1931,
+      "g_I": -2.1488
+    },
+    "train_nll_per_saccade": 1.2513434886932373,
+    "test_nll_per_saccade": 1.241438865661621
+  },
+  "reference_test_nll": {
+    "v2_full_goal_late": 1.3287945985794067,
+    "v1_flags_traces_ior": 1.2564659118652344
+  }
+}

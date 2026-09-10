@@ -157,13 +157,26 @@ learn, remain an extension requiring no structural change.
   maps are sampled along rays from the *current fixation* (a visual
   LiDAR), so eccentricity is implicit in the sensory signal and
   re-centers after every saccade, exactly as the agent's scan does.
-  Top-down gains apply to *feature channels* (upweight the template
-  color, downweight the distractor color) plus a separate gain w_s on
-  the salience channel — which makes rejection-template vs.
-  salience-suppression accounts, and singleton-detection mode (w_s>0),
-  distinct fittable weights (separable across studies with different
-  colors, and via Stilwell 2023's salience manipulation; confounded
-  within any single fixed-color study). Remaining stated shortcut: the
+  **Goal-early assembly (v2.1, canonical after model comparison):**
+  there is no separate task-blind salience channel. The task set
+  enters the feature channels *before* the contrast stage — fixed
+  opponency axes are rotated into template-referenced coordinates (the
+  goal supplies the direction of the target color; the fitted gain
+  supplies only strength), and the gain-weighted contrast is rectified
+  into one goal-modified salience/priority map. Consequences: (a)
+  feature-level suppression can only attenuate/relegate (drive toward
+  zero) — negative writing is reserved for the spatial sources (traces,
+  IoR); (b) below-baseline "suppression" of the singleton is carried by
+  template-color enhancement relegating the mismatching item, which the
+  pooled data independently favor (the nested mechanism comparison);
+  (c) bottom-up capture is the default-gain path (an unweighted
+  presence/intensity term), and learning to ignore is gain adjustment.
+  Goal-early beat the goal-late variant (separate channels + salience
+  map, gains applied after contrast) decisively out-of-sample at equal
+  weight count (RESULTS.md, Visual-Search). Separating
+  enhancement-vs-suppression and rejection-vs-salience empirically
+  requires displays with ≥3 colors — in two-color displays they are
+  structurally unidentifiable. Remaining stated shortcut: the
   shape-defined target requires a form-match channel that color /
   intensity / orientation maps do not cleanly deliver; it stays
   analytic. No transient channel (§7).

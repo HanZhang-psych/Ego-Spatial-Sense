@@ -188,6 +188,37 @@ split, 10 weights.
   reading, effectively gating wedges by whether/where they contain
   energy — not comparable to v1's k on geometric distance.
 
+## v2.1: single goal-modified salience map (goal-early) — results_fit_v21.json
+
+Architecture revision (user decision): no task-blind salience channel;
+the task set enters the feature channels *before* the contrast stage.
+Fixed opponency axes are rotated into template-referenced coordinates
+(the goal supplies the direction of the target color; the gain
+supplies only strength), the gain-weighted contrast is RECTIFIED, and
+the result is one goal-modified map. Feature-level suppression can
+therefore only attenuate/relegate — negative writing is reserved for
+the spatial sources (traces, IoR).
+
+| Model (same split, 10 weights each) | held-out NLL/saccade |
+| --- | --- |
+| v2 goal-late (linear gains + salience channel) | 1.3288 |
+| v1 role flags, traces+IoR | 1.2565 |
+| **v2.1 goal-early (rectified, no salience channel)** | **1.2414** |
+
+- **Goal-early wins decisively over goal-late** (~3,800 total held-out
+  NLL at equal weight count), and even beats the noiseless role-flag
+  model (~650): the graded, geometry-carrying sensory profiles plus
+  the built-in near-weighting express structure the flags cannot.
+- **Sanity check passed**: the orthogonal-axis gain idles at ~0
+  (g_O = −0.005); the template direction alone carries the color work.
+- **Third front-end, same history/IoR weights**: beta_T 1.87,
+  beta_D −0.27, eta_T 0.630, eta_D 0.193, g_I −2.15 — the selection-
+  history and IoR layer is invariant to every perception swap tried.
+- Note: the envelope k collapses (~0.05) because the sensor's
+  near-weighted radial integration now carries the distance
+  dependence — the eccentricity falloff has moved into the perception
+  module, where ES2 arguably always put it.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗
