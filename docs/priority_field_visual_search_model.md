@@ -5,9 +5,21 @@ agent navigating an action space.** Derived from the ego spatial sense (ES2)
 model (`2D-Escaping-Ball/model/es2.py`, extended in
 `2D-Escaping-Ball/model/goal_es2.py`).
 
-Status: specification (v1). The search instantiation is not yet implemented;
-the action instantiation and its diagnostics live in `2D-Escaping-Ball/`
+Status: **fitted (v2.1 final form)**. The search instantiation is
+implemented and fitted in `Visual-Search/` (RESULTS.md there); the
+action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
+
+**Final model of record (search side), one sentence:** a single
+goal-modified priority map — template-rotated, rectified contrast
+computed from pixels — read through a fixed sigmoid attention window
+(ES2's form; ego-anchored, fitted k=3.21, r0≈0), with selection
+history (two world-anchored leaky location traces) and within-trial
+IoR written into the map beneath the window, resolved by softmax.
+History modifies the map, never the window. Every structural choice
+(traces, IoR, goal-early assembly, window form) was decided by
+held-out model comparison; fitted values and the comparison ledger
+are in `Visual-Search/RESULTS.md`.
 
 Paper structure this document serves: (1) a computational model of visual
 search — the signed priority field fitted to human saccade data; (2)
