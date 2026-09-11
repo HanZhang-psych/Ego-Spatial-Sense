@@ -3,18 +3,22 @@
 Scope: the model predicts the FIRST saccade of each trial, launched
 from central fixation. Every term is gated by the attention window:
 
-  mix(x) = a * (target-color contrast at x)
-         - b * (distractor-color contrast at x)
+  mix(x) = a * relu(target-color contrast at x)
+         - b * relu(distractor-color contrast at x)
   F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * mix
       + sigmoid(k*(r0 - dist_i)) * ( g_form*FORM_i
                                      + beta_T*hT_i + beta_D*hD_i )
 
-The color drive is SIGNED - no rectification. All three placements
-were priced on first fixations (linear 1.38547, rectify-first
-1.38594, rectify-after 1.38849, monotone in rectification strength)
-and the linear field also reproduces the below-baseline singleton
-suppression best: the data side with active suppression over
-relegation here.
+ONE-SIDED color channels (Han's decision, for interpretability):
+each channel is rectified BEFORE its gain, so `a` acts only where
+the target-color channel is positive (pure enhancement) and `b`
+only where the distractor-color channel is positive (pure
+suppression) - the two parameters have separate, readable meanings
+instead of the near-unidentifiable signed-opponent pair. The price
+is nil: on first fixations this form fits 1.38594 vs 1.38547 for
+the fully linear field (a tie; rectify-AFTER the gains, 1.38849,
+remains rejected). The combined drive is still signed - b pushes
+the distractor below zero.
 
 From central fixation all ring items are equidistant, so the window
 is flat across items and acts as a shared gain - it does no selective
@@ -94,12 +98,15 @@ class SearchModel(nn.Module):
     def field(self, P, FORM, dist, hT, hD, radii, cphi, sphi):
         """cphi/sphi: per-observation cosine/sine of the angle between
         the distractor color and the target color in opponency space
-        (0 on singleton-absent trials). The color drive is signed:
-        the distractor term can push priority below baseline."""
+        (0 on singleton-absent trials). Channels are rectified
+        before their gains: a = pure enhancement of the target
+        color, b = pure suppression of the distractor color; the
+        combined drive is signed."""
         d_proj = (cphi[:, None, None] * P[..., 0]
                   + sphi[:, None, None] * P[..., 1])
         win_ray = torch.sigmoid(self.k * (self.r0 - radii))
-        drive = self.a * P[..., 0] - self.b * d_proj
+        drive = (self.a * torch.relu(P[..., 0])
+                 - self.b * torch.relu(d_proj))
         stim = (drive * win_ray).sum(-1)
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
         return stim + win_item * (

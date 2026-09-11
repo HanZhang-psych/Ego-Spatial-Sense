@@ -778,6 +778,36 @@ positive lobe may also reflect a different baseline (singleton-
 absent trials) or a specific naive-subject experiment; our pooled
 recomputation with the plain-item baseline shows no positive phase.
 
+## Parameterization of record: one-sided color channels (Han's call)
+
+Han's reading of the signed field was exact: with signed opponent
+projections, `a` also pushes the distractor down and `b` also lifts
+the target color - each gain does both jobs, which is the two-color
+ridge. Decision: switch the model of record to ONE-SIDED channels,
+
+  a * relu(D_T) - b * relu(D_dist)
+
+so `a` acts only where the target-color channel is positive (pure
+enhancement; the rectified distractor value there is exactly zero)
+and `b` only on the distractor-color channel (pure suppression).
+Fit price: nil - 1.39920 vs 1.39892 for the linear field on the
+current dataset (~7 total, a tie); rectify-AFTER the gains remains
+rejected. What is bought: `a` and `b` decouple into separately
+interpretable numbers, ending the sign-flip/ridge caveats that the
+linear basis required. The combined drive remains signed - the
+singleton still sits below zero, and its depth is now `b`'s alone.
+
+Fitted values and checks: a = 0.006, b = 0.113 - in the readable
+basis, target-color enhancement is essentially ZERO once shape
+carries target identity; suppression is the color channel's whole
+job (the sharpest form of the earlier no-color finding).
+Suppression battery improves slightly (41.9 / 7.9 / 13.0 vs
+observed 40.3 / 6.8 / 13.7); priming intact; the Stilwell salience
+gradient survives with the right ordering but compressed (high 8.0
+vs obs 7.0; low 10.3 vs obs 11.3) - the low-salience escape had
+been partly carried by the a-lift on near-target colors, which the
+one-sided basis, with a ~ 0, no longer supplies.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

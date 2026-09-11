@@ -13,10 +13,13 @@ action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 **Final model of record (search side), one sentence:** scoped to the
 FIRST saccade of each trial (launched from central fixation), one
 priority map assembled from minimal goal-weighted evidence —
-a·(target-color contrast) − b·(distractor-color contrast), SIGNED:
-rectification was priced three ways and the linear field won both
-likelihood and the suppression reproduction, so the distractor term
-pushes below baseline (active suppression, not relegation) — plus
+a·relu(target-color contrast) − b·relu(distractor-color contrast):
+ONE-SIDED rectified channels, chosen for interpretability (a = pure
+enhancement of the target color, b = pure suppression of the
+distractor color; the fully linear signed field fits identically to
+within noise, and rectify-after-the-gains remains rejected). The
+combined drive is signed — b pushes the distractor below baseline
+(active suppression, not relegation) — plus
 the pixel-derived template-shape term and the two
 world-anchored leaky location traces, ALL gated by the ego-anchored
 sigmoid attention window (which is flat across the equidistant ring
