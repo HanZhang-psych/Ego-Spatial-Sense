@@ -424,6 +424,22 @@ cross-color studies give it generality. The yoked up/down goal gain
 and the >=3-color prescription are discussed in the two-color
 identifiability section above.
 
+## Presence-channel correction (semantic, not predictive)
+
+Rendering each model term from actual displays exposed a defect: the
+palette's colors are equiluminant with the gray background, so the
+intensity-based presence channel fired on almost nothing (mostly an
+image-border artifact). Corrected to contrast of color deviation from
+background ("any visible object"). Effects after rebuild + refit:
+held-out NLL essentially unchanged (1.2325 vs 1.2317); w_p collapses
+toward 0 - with a real signal to weight, object presence per se adds
+almost nothing once the color terms exist (its earlier weight partly
+leveraged the artifact). Second note: within any single color-pair
+study the off-goal axis is one-signed, so g_O and w_S partially trade
+(the pooled fit can land on offsetting values, e.g. +0.46/-0.48);
+their per-study NET is the identified quantity, and separating them
+cleanly needs cross-color designs.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

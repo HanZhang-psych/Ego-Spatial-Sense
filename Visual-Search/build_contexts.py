@@ -80,10 +80,15 @@ def opponency_contrast(img):
             c += _gauss_blur(m, s_c) - _gauss_blur(m, s_s)   # signed
         c[:10, :] = c[-10:, :] = c[:, :10] = c[:, -10:] = 0
         out[name] = c
-    i = (r + g + b) / 3
-    p = np.zeros_like(i)
+    # presence: contrast of the color DEVIATION from the background -
+    # fires on any visible object, whatever its color (intensity alone
+    # is blind to items equiluminant with the background, and its
+    # nonzero background level created image-border artifacts)
+    from front_end import BG
+    dev = np.sqrt(((img - np.array(BG)) ** 2).sum(-1))
+    p = np.zeros_like(dev)
     for s_c, s_s in [(2, 8), (4, 16)]:
-        p += np.abs(_gauss_blur(i, s_c) - _gauss_blur(i, s_s))
+        p += np.abs(_gauss_blur(dev, s_c) - _gauss_blur(dev, s_s))
     p[:10, :] = p[-10:, :] = p[:, :10] = p[:, -10:] = 0
     out["P"] = p
     return out
