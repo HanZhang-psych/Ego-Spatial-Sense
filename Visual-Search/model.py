@@ -3,15 +3,19 @@
 Scope: the model predicts the FIRST saccade of each trial, launched
 from central fixation. Every term is gated by the attention window:
 
-  mix(x) = a * relu(target-color contrast at x)
-         - b * relu(distractor-color contrast at x)
+  mix(x) = g_T * relu(target-color contrast at x)
+         - g_D * relu(distractor-color contrast at x)
   F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * mix
-      + sigmoid(k*(r0 - dist_i)) * ( g_form*FORM_i
+      + sigmoid(k*(r0 - dist_i)) * ( g_F*FORM_i
                                      + beta_T*hT_i + beta_D*hD_i )
 
+Notation: g_* are the stimulus gains (g_T target-color enhancement,
+g_D distractor-color suppression, g_F shape/form), beta_* the
+history gains, eta_* the memory speeds, k/r0 the attention window.
+
 ONE-SIDED color channels (Han's decision, for interpretability):
-each channel is rectified BEFORE its gain, so `a` acts only where
-the target-color channel is positive (pure enhancement) and `b`
+each channel is rectified BEFORE its gain, so g_T acts only where
+the target-color channel is positive (pure enhancement) and g_D
 only where the distractor-color channel is positive (pure
 suppression) - the two parameters have separate, readable meanings
 instead of the near-unidentifiable signed-opponent pair. The price
@@ -50,9 +54,9 @@ NLOC = 6
 class SearchModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.a = nn.Parameter(torch.tensor(0.5))        # enhance target color
-        self.b = nn.Parameter(torch.tensor(0.3))        # suppress distractor color
-        self.g_form = nn.Parameter(torch.tensor(1.0))   # template-shape gain
+        self.g_T = nn.Parameter(torch.tensor(0.5))        # enhance target color
+        self.g_D = nn.Parameter(torch.tensor(0.3))        # suppress distractor color
+        self.g_F = nn.Parameter(torch.tensor(1.0))   # template-shape gain
         self.raw_k = nn.Parameter(torch.tensor(1.0))    # window steepness
         self.r0 = nn.Parameter(torch.tensor(0.5))       # window reach
         self.beta_T = nn.Parameter(torch.tensor(0.5))
@@ -99,23 +103,23 @@ class SearchModel(nn.Module):
         """cphi/sphi: per-observation cosine/sine of the angle between
         the distractor color and the target color in opponency space
         (0 on singleton-absent trials). Channels are rectified
-        before their gains: a = pure enhancement of the target
-        color, b = pure suppression of the distractor color; the
+        before their gains: g_T = pure enhancement of the target
+        color, g_D = pure suppression of the distractor color; the
         combined drive is signed."""
         d_proj = (cphi[:, None, None] * P[..., 0]
                   + sphi[:, None, None] * P[..., 1])
         win_ray = torch.sigmoid(self.k * (self.r0 - radii))
-        drive = (self.a * torch.relu(P[..., 0])
-                 - self.b * torch.relu(d_proj))
+        drive = (self.g_T * torch.relu(P[..., 0])
+                 - self.g_D * torch.relu(d_proj))
         stim = (drive * win_ray).sum(-1)
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
         return stim + win_item * (
-            self.g_form * FORM + self.beta_T * hT + self.beta_D * hD)
+            self.g_F * FORM + self.beta_T * hT + self.beta_D * hD)
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(
-            a=self.a.item(), b=self.b.item(),
-            g_form=self.g_form.item(), k=self.k.item(), r0=self.r0.item(),
+            g_T=self.g_T.item(), g_D=self.g_D.item(),
+            g_F=self.g_F.item(), k=self.k.item(), r0=self.r0.item(),
             beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
             eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
             sigma=self.sigma.item()).items()}
@@ -123,7 +127,7 @@ class SearchModel(nn.Module):
     def load_values(self, w):
         import numpy as np
         with torch.no_grad():
-            for n in ("a", "b", "g_form", "r0",
+            for n in ("g_T", "g_D", "g_F", "r0",
                       "beta_T", "beta_D"):
                 getattr(self, n).copy_(torch.tensor(float(w[n])))
             self.raw_k.copy_(torch.tensor(float(np.log(np.expm1(w["k"])))))

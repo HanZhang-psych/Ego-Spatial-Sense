@@ -808,6 +808,16 @@ vs obs 7.0; low 10.3 vs obs 11.3) - the low-salience escape had
 been partly carried by the a-lift on near-target colors, which the
 one-sided basis, with a ~ 0, no longer supplies.
 
+## Notation of record
+
+Renamed for consistency (Han's call, 2026-09-11): the stimulus
+gains are now g_T (target-color enhancement; was a), g_D
+(distractor-color suppression; was b), and g_F (shape/form; was
+g_form) - one g_* family alongside beta_* (history gains), eta_*
+(memory speeds), and k/r0 (window). Pure renaming: no refit, same
+values; weights_final.json keys updated. Ledger entries above keep
+the names in use at the time.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
