@@ -642,6 +642,38 @@ b = 0 also shows the color channel carries little at the first
 saccade once shape and the traces are in; its full price is the
 no-color ablation above.
 
+## Is 1.385 good? Oracle benchmarks and the ceiling (Han's question)
+
+Nonparametric memorization benchmarks on the same held-out first
+saccades (n=24,843; Laplace-smoothed tables built from training
+subjects unless noted):
+
+  chance                                     1.754
+  cross-person oracle: context table         1.563
+  within-person oracle: own context table    1.539  (leave-one-out,
+                                                     same subject)
+  cross-person: context x tRep x sRep        1.525
+  model of record                            1.385
+
+The model beats every constructible memorization benchmark -
+including tables that know the display perfectly, the discrete
+priming conditions, or the individual person. The margin comes from
+the graded trace history: h_T/h_D accumulate over many trials with
+learned decays, and that continuous state predicts more than any
+discrete conditioning can tabulate. Consequence: these oracles are
+floors for good models here, not ceilings.
+
+The true ceiling (conditional entropy of behavior) is therefore not
+empirically bounded from above by any table. Bracketing it: behavior
+is intrinsically high-entropy (even on target-repeat trials people
+hit the target only ~71%), and the model's residual misses in the
+battery are small distortions (suppression 8.5 vs 7.0, priming
+slightly compressed), not absent phenomena. Estimated reachable
+ceiling for a subject-held-out model: roughly 1.30-1.35, via
+per-study gains, spatially spreading traces (the W&T gradient), or
+richer history kernels; the remaining ~1.3 nats look like genuine
+first-saccade stochasticity.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
