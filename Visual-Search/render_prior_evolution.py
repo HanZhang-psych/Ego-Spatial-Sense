@@ -77,15 +77,23 @@ def main():
             eD[sing] = 1.0
         hD = (1 - ETA_D) * hD + ETA_D * eD
 
-    vmax = max(abs(snaps[k]).max() for k in snaps)
+    vmax = max(snaps[k].max() for k in snaps)
+    vmin = min(snaps[k].min() for k in snaps)
+    # two-slope norm: enhancement and suppression each use their full
+    # half of the colormap (a symmetric scale hides the shallow
+    # suppression under the ~7x larger target bump)
+    from matplotlib.colors import TwoSlopeNorm
+    norm = TwoSlopeNorm(vcenter=0.0, vmin=min(vmin, -1e-6),
+                        vmax=max(vmax, 1e-6))
     fig = plt.figure(figsize=(15, 6.4))
     gs = fig.add_gridspec(2, 5, height_ratios=[2.2, 1])
     titles = ["trial 0 (no history)", "trial 10 (biased)", "trial 30 (biased)",
               "trial 60 (end of bias)", "trial 90 (30 unbiased)"]
     for i, t in enumerate(snap_at):
         ax = fig.add_subplot(gs[0, i])
-        ax.imshow(snaps[t], origin="lower", extent=[-.75, .75, -.75, .75],
-                  cmap="RdBu_r", vmin=-vmax, vmax=vmax)
+        im = ax.imshow(snaps[t], origin="lower",
+                       extent=[-.75, .75, -.75, .75],
+                       cmap="RdBu_r", norm=norm)
         for j, (x, y) in enumerate(POS):
             ec = ("#118844" if j == T_LOC else
                   "#aa2222" if j == S_LOC else "#888888")
@@ -104,9 +112,13 @@ def main():
     axc.set_xlabel("trial")
     axc.set_ylabel("prior value at slot")
     axc.legend(fontsize=9, loc="upper left")
+    plt.tight_layout(rect=[0.015, 0, 0.955, 0.95])
+    cax = fig.add_axes([0.965, 0.42, 0.011, 0.46])
+    cb = fig.colorbar(im, cax=cax)
+    cb.set_label("prior (red = enhance, blue = suppress;\n"
+                 "halves scaled separately)", fontsize=8)
     fig.suptitle("Pre-onset spatial prior F_pre = window x history, evolving "
                  "over a biased sequence (fitted weights)", fontsize=12)
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
     import os
     os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/prior_evolution.png", dpi=130)
