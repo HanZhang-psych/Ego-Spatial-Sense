@@ -400,6 +400,30 @@ per-trial from the data files; shapes, item size, and background are
 paper-sourced reconstruction assumptions (the display-parameter
 details are not in the OSF trial files or summary workbook).
 
+## Unsigned color-oddity salience w_S (adopted into the final model)
+
+Motivated by a structural critique (Han, 2026-09-10): the rectified
+goal-weighted form could not express direction-blind color salience -
+"this item's color differs from its neighbors, whichever direction" -
+so bottom-up color capture had no dedicated route (the presence map
+covers intensity oddity only). Added w_S * |off-goal color contrast|
+as a nested term (w_S = 0 recovers the prior model).
+
+Result: **w_S = -0.32**, held-out NLL 1.2335 -> 1.2317 (~73 total for
+one weight). Reading: beyond the goal's up/down color weighting, odd
+colors are *actively avoided* - a signal-suppression-style penalty on
+salience itself, now carried inside the goal-early architecture.
+Adopted into the final model (fit.py fits it by default; the nested
+test is --variant no_salience). Side effect: the late-saccade
+suppression residual improves markedly (model effect at indices 1-4:
+-5.7/-5.0/-3.4/-1.5, was -4.0/-3.7/-2.2/-0.6) - oddity suppression,
+unlike goal weighting, keeps acting at every fixation. Note: in
+green/red studies the off-goal magnitude loads mainly on the
+singleton, so w_S there acts as singleton-specific suppression;
+cross-color studies give it generality. The yoked up/down goal gain
+and the >=3-color prescription are discussed in the two-color
+identifiability section above.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

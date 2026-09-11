@@ -37,7 +37,8 @@ def ring_dmat(setsize):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", default="final",
-                    choices=["final", "no_traces", "no_ior", "sigma"])
+                    choices=["final", "no_traces", "no_ior", "sigma",
+                             "no_salience"])
     ap.add_argument("--epochs", type=int, default=300)
     args = ap.parse_args()
 
@@ -63,6 +64,8 @@ def main():
               "no_ior": ["g_I"]}.get(args.variant, [])
     if args.variant != "sigma":
         frozen = frozen + ["raw_sigma"]
+    if args.variant == "no_salience":
+        frozen = frozen + ["w_S"]        # nested test of the salience gain
     with torch.no_grad():
         for n in frozen:
             if n != "raw_sigma":

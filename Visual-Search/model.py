@@ -37,6 +37,8 @@ class SearchModel(nn.Module):
         self.raw_eta_T = nn.Parameter(torch.tensor(0.0))
         self.raw_eta_D = nn.Parameter(torch.tensor(0.0))
         self.g_I = nn.Parameter(torch.tensor(-0.5))     # IoR penalty
+        self.w_S = nn.Parameter(torch.tensor(0.0))      # unsigned color-oddity
+                                                        # salience gain (|D_O|)
         self.raw_sigma = nn.Parameter(torch.tensor(-12.0))  # trace spread (off)
 
     @property
@@ -79,7 +81,7 @@ class SearchModel(nn.Module):
     def field(self, P, FORM, dist, visited, hT, hD, radii):
         win_ray = torch.sigmoid(self.k * (self.r0 - radii))
         mix = (self.g_T * P[..., 0] + self.g_O * P[..., 1]
-               + self.w_p * P[..., 2])
+               + self.w_S * P[..., 1].abs() + self.w_p * P[..., 2])
         stim = (torch.relu(mix) * win_ray).sum(-1) + self.g_form * FORM
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
         return stim + win_item * (self.beta_T * hT + self.beta_D * hD
@@ -91,7 +93,8 @@ class SearchModel(nn.Module):
             g_form=self.g_form.item(), k=self.k.item(), r0=self.r0.item(),
             beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
             eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
-            g_I=self.g_I.item(), sigma=self.sigma.item()).items()}
+            g_I=self.g_I.item(), w_S=self.w_S.item(),
+            sigma=self.sigma.item()).items()}
 
     def load_values(self, w):
         import numpy as np
@@ -99,6 +102,7 @@ class SearchModel(nn.Module):
             for n in ("g_T", "g_O", "w_p", "g_form", "r0",
                       "beta_T", "beta_D", "g_I"):
                 getattr(self, n).copy_(torch.tensor(float(w[n])))
+            self.w_S.copy_(torch.tensor(float(w.get("w_S", 0.0))))
             self.raw_k.copy_(torch.tensor(float(np.log(np.expm1(w["k"])))))
             self.raw_eta_T.copy_(torch.logit(torch.tensor(float(w["eta_T"]))))
             self.raw_eta_D.copy_(torch.logit(torch.tensor(float(w["eta_D"]))))
