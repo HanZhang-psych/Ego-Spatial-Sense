@@ -395,6 +395,23 @@ head expresses it (positive); its payoff sign depends on target uncertainty
 
 ## 7. Design decisions on record
 
+- **Limitation: within-session learning is location-based, not
+  feature-based.** The only quantities that update across trials are
+  the two location-indexed traces h_T/h_D; the feature gains (a, b,
+  g_form) are a static task set, fixed at their fitted asymptote
+  from trial 1. Consequence, measured (capture_by_trial.py): the
+  observed capture effect deepens across the session (-2.7 over
+  trials 1-10 to -7.4 by trials 60+, held-out subjects) while the
+  model is flat at ~-4.6 - the right depth, no trajectory. Location
+  learning cannot produce this: in roving designs the singleton
+  occupies all slots equally, so h_D builds uniformly and cancels
+  out of the singleton-vs-baseline contrast. The published
+  capture-to-suppression trajectory is what within-session GAIN
+  learning on the feature channels would look like (b growing from
+  ~0 to asymptote, with initial capture carried by a salience
+  channel) - the agent-side thesis "learning to ignore is gain
+  adjustment," which this model inherits only as a fitted endpoint.
+  Stated as a limitation of the current model, not fitted around.
 - **No cued spatial knowledge.** Neither the planned search tasks nor the
   reach-avoid task involves cues; the gain map is envelope + history only.
   This also excludes scene-prior guidance — appropriate for singleton-type
