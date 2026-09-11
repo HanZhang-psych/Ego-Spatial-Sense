@@ -12,9 +12,13 @@ Decisions (see docs/priority_field_visual_search_model.md):
 - Trials truncate at the first target fixation (later saccades are
   responding, not searching). Saccades landing on the currently fixated
   item (corrective) are dropped and counted.
-- Practice trials are excluded from scoring but KEPT in events.csv so the
-  traces can be conditioned on them (excluded-from-likelihood is not
-  excluded-from-traces).
+- Practice trials are excluded ALTOGETHER (no saccades, no event rows):
+  the memory traces start cold at each subject's first experimental
+  trial.
+- Trials with other distractor types - abrupt onsets, singleton-onsets,
+  motion singletons - are excluded entirely (the analysis is
+  color-singleton present vs. absent, as in the source paper); the
+  number of dropped trials is printed per study.
 - Gaspelin & Luck 2018 E4 (studyID 12 here) alternates singleton colors
   each block, which disrupts the fixed task set the model assumes; it is
   excluded, as in the source paper's suppression/priming analyses.
@@ -46,10 +50,17 @@ def load_study(path):
             raise ValueError(f"{os.path.basename(path)} missing column {c}")
     if "singType" in df.columns:
         # only color-singleton-present and singleton-absent trials are
-        # analyzed (as in the source paper); onset/motion-distractor
-        # trials are excluded entirely, so for the traces they act as
-        # pure decay-free gaps in the sequence
+        # analyzed (as in the source paper); trials with other
+        # distractor types (abrupt onsets, singleton-onsets, motion
+        # singletons) are excluded entirely
         ok = df.singType.isin(["sing", "absent", "Abs"]) | df.singType.isna()
+        dropped = df[~ok]
+        if len(dropped):
+            n_tr = dropped.groupby(
+                ["subjNum", "block", "trial"]).ngroups
+            kinds = sorted(dropped.singType.dropna().unique())
+            print(f"  excluded {n_tr} other-distractor trials "
+                  f"(types: {', '.join(kinds)})")
         df = df[ok].copy()
         df["color_sing"] = df.singType.eq("sing")
     else:
@@ -94,11 +105,12 @@ def process_study(df, study_ord):
         targ = int(head.targLoc)
         sing = int(head.singLoc) if (head.singPres == "P"
                                      and head.color_sing) else 0
-        practice = 1 if head.practice == "Y" else 0
-        keep = 0 if practice else int((tr.keepTrial == 1).any())
+        if head.practice == "Y":
+            continue                      # practice excluded altogether
+        keep = int((tr.keepTrial == 1).any())
         event_rows.append(dict(study=study_ord, subj=subj, block=block,
                                trial=trial, setsize=setsize, targLoc=targ,
-                               singLoc=sing, practice=practice))
+                               singLoc=sing))
         if not keep:
             continue
         cur_x, cur_y, cur_loc = CENTER[0], CENTER[1], 0

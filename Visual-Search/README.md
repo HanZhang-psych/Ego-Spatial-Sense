@@ -31,10 +31,12 @@ conditional choice from the current fixation; positions only (no
 latency anywhere); one population-level fit (no individual
 differences); bare field → softmax readout (no motor-repetition, no
 lapse); no IoR term — the refixation rate is a reported diagnostic; no
-transient map. Traces are conditioned on all analyzed trials in order
-(practice included); the likelihood scores experimental, kept trials
-only. Onset/motion-distractor trials are excluded entirely — the
-analysis is color-singleton present vs. absent, as in the source paper.
+transient map. Practice trials are excluded altogether (the memory traces start cold
+at each subject's first experimental trial); the likelihood scores
+kept trials. Trials with other distractor types (abrupt onsets,
+singleton-onsets, motion singletons) are excluded entirely — the
+analysis is color-singleton present vs. absent, as in the source
+paper — with dropped counts printed at pooling time.
 Gaspelin & Luck 2018 E4 is excluded (block-alternating singleton colors
 break the fixed-task-set assumption), as in the source paper's
 suppression/priming analyses.

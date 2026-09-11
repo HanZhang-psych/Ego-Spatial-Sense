@@ -8,6 +8,15 @@
 > below stands as the record of those comparisons; the git history
 > holds the original scripts. Sections below name the scripts that
 > produced them at the time.
+>
+> **Pooling revision (2026-09-10):** practice trials are now excluded
+> altogether (previously they conditioned the traces without being
+> scored) and the excluded other-distractor-type trials (onsets,
+> singleton-onsets, motion singletons) are reported at pooling time.
+> Effect on results: none to three decimals (held-out NLL 1.2335 vs
+> 1.2339; all reproduction numbers unchanged) — the fast trace rates
+> make the cold start at each subject's first experimental trial
+> immaterial.
 
 Data: 217,595 saccades (indices 1–5; 124,834 first saccades), 333
 subjects, 11 studies; color-singleton present vs. absent trials only
