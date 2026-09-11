@@ -40,13 +40,15 @@ COLORS = {
 BG = (0.35, 0.35, 0.35)
 
 
-def render(items):
-    """items: list of dicts {x, y, color, shape ('circle'|'diamond')}
-    in centered coords (units of ring diameter). Returns [IMG, IMG, 3]."""
-    img = np.ones((IMG, IMG, 3)) * np.array(BG)
-    yy, xx = np.mgrid[0:IMG, 0:IMG]
-    to_px = lambda v: (v + 0.75) / 1.5 * IMG
-    r_px = ITEM_R / 1.5 * IMG
+def render(items, scale=1):
+    """items: list of dicts {x, y, color, shape} in centered coords
+    (units of ring diameter). Returns [IMG*scale, IMG*scale, 3];
+    scale > 1 renders at higher resolution (e.g. for shape matching)."""
+    N = IMG * scale
+    img = np.ones((N, N, 3)) * np.array(BG)
+    yy, xx = np.mgrid[0:N, 0:N]
+    to_px = lambda v: (v + 0.75) / 1.5 * N
+    r_px = ITEM_R / 1.5 * N
     for it in items:
         cx, cy = to_px(it["x"]), to_px(it["y"])
         shape = it.get("shape", "circle")
@@ -67,7 +69,7 @@ def render(items):
     return img
 
 
-NONTARGET_SHAPES = ["circle", "square", "triangle", "cross", "hexagon"]
+NONTARGET_SHAPES = ["square", "triangle", "cross", "diamond"]
 
 
 def item_positions(setsize):
@@ -77,7 +79,7 @@ def item_positions(setsize):
     return [(ECC * np.cos(a), ECC * np.sin(a)) for a in ang], ang
 
 
-def shape_for(slot, targ_slot, template_shape="diamond"):
+def shape_for(slot, targ_slot, template_shape="circle"):
     """Feature-search displays: the target is the template shape among
     HETEROGENEOUS nontarget shapes (the target is never a shape
     singleton - inclusion criterion of the source studies)."""

@@ -512,6 +512,67 @@ top-down in WHAT it looks for, bottom-up in the evidence), then
 re-running this fork. Until then, the safe claim is: template
 evidence, however delivered, fits best un-gated in these data.
 
+## From label to pixels: the shape channel made honest (and where that ends)
+
+Han asked the pointed question: "Is the 'shape' channel simply
+encoding the correct target location?" It was - FORM marked the
+template item analytically, using task knowledge, not the display.
+Rebuilding it from pixels took three moves:
+
+**1. Canonical displays (Han's call).** In every pooled study the
+subject's target shape and the color scheme were fixed for the whole
+session, so only the match/mismatch structure matters, not the
+specific assignment. All displays are therefore reconstructed as:
+target = circle, nontargets drawn from {square, triangle, cross,
+diamond}, all items green, singleton red. This collapses 526 unique
+displays to 52 (36 setsize-6 + 16 setsize-4) and 3,062 contexts to
+232. Shape audit backing this (from the papers; the trial files
+record no shape columns, so per-subject assignments are unknowable):
+Gaspelin 2017 counterbalanced diamond/circle targets among
+diamond/circle/square/hexagon; Adams 2023 / Adams & Gaspelin 2024
+fixed a diamond target among hexagons and triangles; Stilwell
+counterbalanced circle/diamond; Hamblin-Frohman 2022 used a diamond
+target. Known cost: Stilwell's singleton-salience color manipulation
+becomes invisible to the model.
+
+**2. A pixel-derived matcher.** The display is rendered (256px, 2x
+for matching), the background-deviation map binarized (shape, not
+color amplitude - unbinarized, the red singleton's larger deviation
+leaked color into "shape"), and normalized cross-correlation with
+the circle kernel computed by FFT. Plain NCC is nearly blind at this
+item scale: filled same-radius shapes share ~95% of their area, so
+circle scored 0.822 vs square 0.809 - a margin that standardization
+turns to noise. Fit with that channel, held-out NLL was 1.4627 and
+the model's target-fixation rate collapsed to 26.6% (observed
+40.3%). Resolution does not fix this (1x/2x/4x renders: margin
++1.6/+2.1/+2.3%); the overlap is geometric. A contour-based matcher
+was worse (the cross's edges beat the circle's). What fixes it is a
+discriminative readout - score = circle NCC minus the best competing
+shape's NCC, i.e. template matching with competitive normalization
+among shape detectors. Target then scores ~6x the best nontarget.
+
+**3. The refit.** Held-out NLL 1.23764, against 1.23328 for the
+analytic label - 99.98% of the gap recovered; fitted weights nearly
+unchanged (g_form 0.62); suppression/priming reproductions intact
+(target rate 51.5 vs label-era 52.5). And the gating fork, rerun as
+promised in the caveat above: with the weak matcher, gating had
+FLIPPED (gated 1.4487 beat ungated 1.4627 - the window acting as
+damage control on a noisy channel); with the sharp matcher it flips
+back (gated 1.2595, decisively worse). Shape stays outside the
+window, now on pixel-derived evidence.
+
+**Where honesty ends (on record):** the datasets never log item
+shapes, so the reconstruction places the circle at targLoc by
+construction. In a noiseless canonical display, any sufficiently
+good shape matcher must therefore converge on the analytic label -
+1.2376 vs 1.2333 is the entire remaining daylight. The pixel channel
+changes the pathway, not the information: guidance now flows through
+a fixed, shape-general computation with measurable confusability,
+rather than a location-indexed label. A shape channel carrying
+genuinely LESS information than the label would need a principled
+degradation (e.g. eccentricity-dependent acuity); the gated_shape
+result is that test at window granularity, and the data reject it.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

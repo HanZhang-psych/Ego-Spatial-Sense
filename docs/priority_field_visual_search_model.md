@@ -16,10 +16,20 @@ contrast) − b·(distractor-color contrast), rectified — with the two
 world-anchored leaky location traces and within-trial IoR written in
 signed, read through a fixed ego-anchored sigmoid attention window;
 the template-shape term joins OUTSIDE the window (gating it is
-rejected at ~950 held-out NLL — channel-specific distance profiles,
-converging with the agent, whose goal channel likewise has its own
-distance gain; caveat: the shape channel is the analytic label, see
-RESULTS); softmax readout; ten fitted weights. Every structural choice (traces, IoR,
+rejected — decisively with the final pixel channel; a weak matcher
+briefly flipped this fork, see RESULTS — channel-specific distance
+profiles, converging with the agent, whose goal channel likewise has
+its own distance gain); softmax readout; ten fitted weights. The
+shape channel is pixel-derived: displays are reconstructed
+canonically (target = circle, green items, red singleton — each
+subject's template and colors were fixed all session, so only
+match/mismatch structure matters) and shape evidence is a
+discriminative normalized cross-correlation (circle NCC minus the
+best competing shape's). Disclosed limit: the data never record item
+shapes, so the reconstruction places the circle at targLoc by
+construction — the pixel channel makes the pathway realistic, not
+the display's provenance, and its fit (1.2376) sits within 0.005 of
+the analytic label (1.2333). Every structural choice (traces, IoR,
 goal-early assembly, window form, history ordering, the dropped
 presence and salience channels, the kept shape term, the
 rectification placement) was decided or priced by held-out
@@ -184,10 +194,10 @@ learn, remain an extension requiring no structural change.
   weight count (RESULTS.md, Visual-Search). Separating
   enhancement-vs-suppression and rejection-vs-salience empirically
   requires displays with ≥3 colors — in two-color displays they are
-  structurally unidentifiable. Remaining stated shortcut: the
-  shape-defined target requires a form-match channel that color /
-  intensity / orientation maps do not cleanly deliver; it stays
-  analytic. No transient channel (§7).
+  structurally unidentifiable. The form-match channel is
+  pixel-derived (discriminative NCC on the rendered display), with
+  the display-provenance limit stated above. No transient channel
+  (§7).
 - **Network form (mirrors `goal_es2.py`)**: the display is rendered as ray
   maps over the search ring, one per channel; each channel passes through
   its own small learned gain block (the analog of `goal_gain`), producing

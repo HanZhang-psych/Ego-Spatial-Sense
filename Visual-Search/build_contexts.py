@@ -25,7 +25,7 @@ Usage: python build_contexts.py
 import numpy as np
 import pandas as pd
 
-from front_end import (COLORS, IMG, _gauss_blur, form_map, item_positions,
+from front_end import (COLORS, IMG, _gauss_blur, item_positions,
                        render, shape_for)
 
 OPPONENT = {"green": "red", "red": "green", "blue": "orange",
@@ -42,23 +42,16 @@ def valid_color(c):
 
 
 def normalize_colors(sacc):
+    """Canonical color scheme: each subject's colors were fixed for
+    their whole session, so the model only ever sees match-vs-mismatch
+    structure - every display is reconstructed with a GREEN target
+    color and a RED singleton. (Recorded cost: Stilwell 2023's
+    within-study singleton-salience color manipulation is invisible to
+    this reconstruction.)"""
     sacc = sacc.copy()
-    sacc["targCol"] = sacc.targCol.str.lower()
-    sacc["singCol"] = sacc.singCol.str.lower()
-    fixed = []
-    for (_, _), sub in sacc.groupby(["study", "subj"], sort=False):
-        tc = sub.targCol.where(sub.targCol.map(valid_color))
-        mode = tc.mode()
-        t_fallback = mode.iloc[0] if len(mode) else "green"
-        t = tc.fillna(t_fallback)
-        s = sub.singCol.where(sub.singCol.map(valid_color))
-        s = s.fillna(t.map(OPPONENT))
-        s = s.where(sub.singLoc > 0, "none")
-        out = sub.copy()
-        out["targCol"] = t
-        out["singCol"] = s
-        fixed.append(out)
-    return pd.concat(fixed)
+    sacc["targCol"] = "green"
+    sacc["singCol"] = np.where(sacc.singLoc.values > 0, "red", "none")
+    return sacc
 
 
 def opponency_contrast(img):
@@ -92,6 +85,63 @@ def opponency_contrast(img):
     p[:10, :] = p[-10:, :] = p[:, :10] = p[:, -10:] = 0
     out["P"] = p
     return out
+
+
+def shape_kernels(r_px):
+    """Binary footprint kernels at item scale for each shape."""
+    n = int(3.2 * r_px) | 1
+    c = n // 2
+    yy, xx = np.mgrid[0:n, 0:n]
+    ks = {}
+    ks["circle"] = ((xx - c) ** 2 + (yy - c) ** 2 < r_px ** 2)
+    ks["square"] = (np.abs(xx - c) < 0.95 * r_px) & (np.abs(yy - c) < 0.95 * r_px)
+    ks["diamond"] = (np.abs(xx - c) + np.abs(yy - c)) < 1.3 * r_px
+    ks["triangle"] = ((yy - c > -0.9 * r_px)
+                      & (np.abs(xx - c) < 0.95 * r_px
+                         * (1 - (yy - c + 0.9 * r_px) / (2.0 * r_px))))
+    ks["cross"] = (((np.abs(xx - c) < 0.45 * r_px) & (np.abs(yy - c) < 1.1 * r_px))
+                   | ((np.abs(yy - c) < 0.45 * r_px) & (np.abs(xx - c) < 1.1 * r_px)))
+    return {k: v.astype(float) for k, v in ks.items()}
+
+
+def shape_match_map(img, template_shape="circle"):
+    """PIXEL-DERIVED shape evidence: correlate the display's
+    background-deviation map with the template-shape kernel, with the
+    average all-shape kernel subtracted (so plain "an object is here"
+    energy cancels and only shape-DISTINCTIVE structure remains).
+    Graded and confusable by construction - a square partially matches
+    a circle. Replaces the earlier analytic label channel. Note the
+    remaining scope limit: the trial data never record item shapes, so
+    displays are reconstructed with the template at the target's
+    location; this channel makes the EVIDENCE pathway realistic, not
+    the display's provenance."""
+    from front_end import BG, ITEM_R
+    scale = img.shape[0] // IMG        # supports hi-res renders
+    r_px = ITEM_R / 1.5 * IMG * scale
+
+    ks = shape_kernels(r_px)
+    K = ks[template_shape]
+    K = K / np.sqrt((K ** 2).sum())
+    ones = np.ones_like(K)
+    dev = np.sqrt(((img - np.array(BG)) ** 2).sum(-1))
+    dev = (dev > 0.15).astype(float)   # binarize: shape, not color amplitude
+    n = K.shape[0]
+
+    def corr(kern):
+        F = np.fft.rfft2(dev) * np.conj(np.fft.rfft2(kern, dev.shape))
+        out = np.fft.irfft2(F, dev.shape)
+        return np.roll(out, (n // 2, n // 2), axis=(0, 1))
+
+    den = np.sqrt(np.maximum(corr(ones), 1e-9))
+
+    def ncc(shape):
+        Ks = ks[shape] / np.sqrt((ks[shape] ** 2).sum())
+        return corr(Ks) / den          # normalized cross-correlation
+
+    # discriminative match: template NCC minus the best competing shape's
+    m = ncc(template_shape) - np.max(
+        [ncc(sh) for sh in ks if sh != template_shape], axis=0)
+    return _gauss_blur(np.maximum(m, 0), 2 * scale)
 
 
 def template_axis(targCol):
@@ -164,7 +214,8 @@ def main():
                           shape=shape_for(j + 1, targLoc))
                      for j in range(setsize)]
             img = render(items)
-            cache[dk] = (opponency_contrast(img), form_map(items),
+            img_hi = render(items, scale=2)
+            cache[dk] = (opponency_contrast(img), shape_match_map(img_hi),
                          template_axis(targCol))
         maps, fmap, u = cache[dk]
         setsize = int(k.setsize)
@@ -172,10 +223,11 @@ def main():
         fix = (0.0, 0.0) if k.fixloc == 0 else pos[int(k.fixloc) - 1]
         ci = int(k.ctx)
         P[ci], R[ci] = wedge_profiles(maps, u, fix, setsize)
-        to_px = lambda v: (v + 0.75) / 1.5 * IMG
+        sc = fmap.shape[0] // IMG
+        to_pxf = lambda v: (v + 0.75) / 1.5 * IMG * sc
         for j in range(setsize):
-            F[ci, j] = fmap[int(np.clip(to_px(pos[j][1]), 0, IMG - 1)),
-                            int(np.clip(to_px(pos[j][0]), 0, IMG - 1))]
+            F[ci, j] = fmap[int(np.clip(to_pxf(pos[j][1]), 0, IMG * sc - 1)),
+                            int(np.clip(to_pxf(pos[j][0]), 0, IMG * sc - 1))]
         if ci % 300 == 0:
             print(f"  {ci}/{n}", flush=True)
     P[..., :2] /= max(np.abs(P[..., :2]).std(), 1e-9)

@@ -85,7 +85,7 @@ class SearchModel(nn.Module):
         return outT, outD
 
     def field(self, P, FORM, dist, visited, hT, hD, radii, cphi, sphi,
-              rect="after"):
+              rect="after", shape_gated=False):
         """cphi/sphi: per-observation cosine/sine of the angle between
         the distractor color and the target color in opponency space
         (0 on singleton-absent trials). rect: "after" rectifies the
@@ -100,10 +100,12 @@ class SearchModel(nn.Module):
             drive = self.a * torch.relu(P[..., 0]) - self.b * torch.relu(d_proj)
         else:
             drive = torch.relu(self.a * P[..., 0] - self.b * d_proj)
-        stim = (drive * win_ray).sum(-1) + self.g_form * FORM
+        stim = (drive * win_ray).sum(-1)
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
-        return stim + win_item * (self.beta_T * hT + self.beta_D * hD
-                                  + self.g_I * visited.float())
+        shape_term = (win_item * self.g_form * FORM if shape_gated
+                      else self.g_form * FORM)
+        return stim + shape_term + win_item * (
+            self.beta_T * hT + self.beta_D * hD + self.g_I * visited.float())
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(

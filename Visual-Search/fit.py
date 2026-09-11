@@ -38,7 +38,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", default="final",
                     choices=["final", "no_traces", "no_ior", "sigma",
-                             "no_shape", "rectify_first"])
+                             "no_shape", "rectify_first", "gated_shape"])
     ap.add_argument("--epochs", type=int, default=300)
     args = ap.parse_args()
 
@@ -85,7 +85,8 @@ def main():
         F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII,
                     cphi, sphi,
                     rect="before" if args.variant == "rectify_first"
-                    else "after")
+                    else "after",
+                    shape_gated=(args.variant == "gated_shape"))
         F = F.masked_fill(~tt["valid"], -1e9)
         lp = torch.log_softmax(F, 1).gather(1, tt["choice"][:, None]).squeeze(1)
         return -lp[mask].mean()
