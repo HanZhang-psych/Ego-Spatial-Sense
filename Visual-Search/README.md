@@ -41,31 +41,30 @@ suppression/priming analyses.
 
 ## Files
 
-Final-model pipeline (v2.1, history-inside; the model of record):
-
 | File | Purpose |
 | --- | --- |
 | `pool_data.py` | Fixation reports → `dataset/saccades.csv` + `dataset/events.csv` |
-| `front_end.py` | Pixel front-end (visual LiDAR): display image → Itti & Koch maps → ray scan from the current fixation |
-| `build_contexts.py` | Reconstructs each unique display, assigns context ids (`saccades_ctx.csv`) |
-| `build_contexts_v21.py` | Goal-early radial contrast profiles per context (`contexts_v21.npz`) |
-| `fit_v21.py` | Goal-early pooled fit (ledger step; the final history-inside variant is in `results_history_order.json`) |
-| `fit_sigma.py` | Trace spatial-spread kernel sigma_h (pins to zero here) |
-| `reproduce_gaspelin.py` | Loads the final model; reproduction battery vs the source paper |
-| `reproduce_wang_theeuwes.py` | HP-distractor-location reproduction (Wang & Theeuwes) |
+| `front_end.py` | The sensor: display rendering, Itti & Koch-style maps, ray scanning, item geometry |
+| `build_contexts.py` | Reconstructs every unique display and precomputes the model's radial evidence (`dataset/contexts_v21.npz` + `dataset/saccades_ctx.csv`) |
+| `data.py` | Shared tensors (choice sets, distances, visited, trial-ordered events) + the subject split |
+| `model.py` | `SearchModel` — the final model — and `load_final()` (`weights_final.json`) |
+| `fit.py` | Pooled MLE; `--variant {final, no_traces, no_ior, sigma}` → `results_final.json` |
+| `reproduce.py` | Reproduction batteries: Gaspelin suite (held-out) + Wang & Theeuwes simulation |
 | `render_prior_evolution.py` | Pre-onset prior F = window x history over a biased sequence |
+| `tutorial_visual_search.ipynb` | Teaching notebook: builds, trains, evaluates the final model on the real data |
 
-Supplement / ledger (earlier model versions backing committed results):
-`model.py` + `fit_pooled.py` (v1 role-flag model; `build_tensors` is
-still the shared data loader), `fit_v2.py` (goal-late pixel variant),
-`recover.py` (v1 parameter recovery), `plot_results.py` (v1 six-panel
-figure). Results JSONs document each step; RESULTS.md is the ledger.
+Earlier model generations (v1 role-flag fits, the goal-late v2, the
+window/history/sigma comparison scripts) were removed in a
+consolidation; every number they produced is preserved in RESULTS.md,
+and the git history holds the scripts.
 
 ## Reproduce
 
 ```bash
 python pool_data.py --data_dir "<...>/search_data/Data Files" --out_dir dataset
-python fit_pooled.py --epochs 300
+python build_contexts.py
+python fit.py                 # -> weights_final.json, results_final.json
+python reproduce.py
 ```
 
 ## Diagnostics reported by the fit

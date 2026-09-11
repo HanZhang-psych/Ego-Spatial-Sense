@@ -8,7 +8,7 @@ targets appear at one slot (green outline, bottom) on 70% of trials,
 singletons at the opposite slot (red outline, top) on 70% of
 singleton-present trials (70% present), for 60 biased trials; then 30
 unbiased trials (both uniform) to show decay.
-Weights are the fitted history-inside values (results_history_order.json).
+Weights are the fitted history-inside values (weights_final.json).
 
 Output: figures/prior_evolution.png
 """
@@ -20,8 +20,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-p = json.load(open("results_history_order.json"))["history_inside_window"]["params"]
-r0 = json.load(open("results_history_order.json"))["history_inside_window"]["r0"]
+p = json.load(open("weights_final.json"))
+r0 = p["r0"]
 BT, BD, ETA_T, ETA_D = p["beta_T"], p["beta_D"], p["eta_T"], p["eta_D"]
 K = p["k"]
 

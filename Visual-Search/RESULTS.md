@@ -1,4 +1,13 @@
-# Pooled fit results (v1, run 2026-09-10)
+# Pooled fit results (run 2026-09-10)
+
+> **Consolidation note (2026-09-10):** the scripts for superseded
+> model generations (v1 role-flag fits, goal-late v2, the
+> window-form/history-ordering/sigma comparison runs) were removed;
+> the current pipeline is `build_contexts.py` → `fit.py` →
+> `reproduce.py` with the final model in `model.py`. Every number
+> below stands as the record of those comparisons; the git history
+> holds the original scripts. Sections below name the scripts that
+> produced them at the time.
 
 Data: 217,595 saccades (indices 1–5; 124,834 first saccades), 333
 subjects, 11 studies; color-singleton present vs. absent trials only

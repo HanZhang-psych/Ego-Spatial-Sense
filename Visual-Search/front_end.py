@@ -70,6 +70,13 @@ def render(items):
 NONTARGET_SHAPES = ["circle", "square", "triangle", "cross", "hexagon"]
 
 
+def item_positions(setsize):
+    """The setsize item slots: an iso-eccentric ring (units of ring
+    diameter, so center-to-item distance is 0.5)."""
+    ang = [2 * np.pi * j / setsize - np.pi / 2 for j in range(setsize)]
+    return [(ECC * np.cos(a), ECC * np.sin(a)) for a in ang], ang
+
+
 def shape_for(slot, targ_slot, template_shape="diamond"):
     """Feature-search displays: the target is the template shape among
     HETEROGENEOUS nontarget shapes (the target is never a shape

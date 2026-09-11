@@ -1,29 +1,21 @@
-"""Search instantiation of the signed priority field (v1).
+"""The final search model (one class, one loader).
 
-Same structured network as the agent (model/goal_es2.py), degenerate
-where the task pins an input (docs/priority_field_visual_search_model.md):
+  F_i = window(dist_i) is implicit in the sensor for the stimulus part:
+  stim_i = sum_bins sigmoid(k*(r0 - r)) * relu(g_T*D_T + g_O*D_O + w_p*D_P)
+           + g_form*FORM_i
+  F_i = stim_i + sigmoid(k*(r0 - dist_i)) * (beta_T*hT_i + beta_D*hD_i
+                                             + g_I*visited_i)
+  P(saccade -> i) = softmax over the choice set
 
-  F_i = env(d_i) * (1 + g_T*isT_i + g_S*isS_i) + beta_T*hT_i + beta_D*hD_i
-  P(saccade -> i) = softmax(F)   over the current choice set
-
-- env(d) = sigmoid(k * (1 - d)): the agent's per-ray sigmoid envelope
-  with steepness k TIED across directions (weight sharing); d is the
-  item's distance from the current fixation, normalized by the display
-  ring diameter. The item-presence gain is fixed at 1 (unit of F, with
-  softmax temperature fixed at 1).
-- g_T, g_S: static top-down channel gains (task set: attend template,
-  willfully ignore the singleton). Scalars because the task evaluates
-  the gain blocks at a single input point each.
-- hT, hD: presence-driven leaky location traces (runtime state), rates
-  eta_T, eta_D learned; expression weights beta_T, beta_D signed.
-  Updated every trial: h <- (1-eta)*h + eta*e (e marks where a target /
-  singleton appeared; distractor e = 0 on singleton-absent trials).
-- g_I: optional inhibition-of-return penalty on already-visited items
-  (one weight, frozen at 0 in the base model) — added as a model
-  comparison after the pre-registered refixation diagnostic failed
-  (observed 1.2% revisits vs. 6.3% predicted without it).
-- No latency terms, no lapse, no per-subject parameters.
+Goal-early single priority map; ES2-form sigmoid attention window
+(fitted k, r0) gating stimulus evidence AND memory (history-inside,
+decided by held-out comparison); feature-level suppression is
+relegation-only; signed writing is reserved for the spatial memories.
+Weights are stored in weights_final.json by fit.py; load_final() reads
+them back.
 """
+
+import json
 
 import torch
 import torch.nn as nn
@@ -31,24 +23,21 @@ import torch.nn as nn
 NLOC = 6
 
 
-class SearchEs2Model(nn.Module):
-    def __init__(self, combine="mul"):
-        """combine: how the envelope enters the field (the master
-        equation's estimable combination-rule fork). "mul" (default,
-        agent-inherited): env(d) scales the stimulus drive. "add": a
-        linear distance penalty -k*d added to every item's utility,
-        independent of item identity (minimal additive form; amplitude
-        and shape folded into the one slope)."""
+class SearchModel(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.combine = combine
-        self.raw_k = nn.Parameter(torch.tensor(1.0))       # envelope steepness (softplus)
-        self.g_T = nn.Parameter(torch.tensor(1.0))         # template gain
-        self.g_S = nn.Parameter(torch.tensor(0.0))         # salience/rejection gain
-        self.beta_T = nn.Parameter(torch.tensor(0.5))      # target-trace weight
-        self.beta_D = nn.Parameter(torch.tensor(-0.1))     # distractor-trace weight
-        self.raw_eta_T = nn.Parameter(torch.tensor(0.0))   # trace rates (sigmoid)
+        self.g_T = nn.Parameter(torch.tensor(0.5))      # template-color gain
+        self.g_O = nn.Parameter(torch.tensor(0.0))      # orthogonal axis (~0)
+        self.w_p = nn.Parameter(torch.tensor(0.3))      # presence gain
+        self.g_form = nn.Parameter(torch.tensor(1.0))   # template-shape gain
+        self.raw_k = nn.Parameter(torch.tensor(1.0))    # window steepness
+        self.r0 = nn.Parameter(torch.tensor(0.5))       # window reach
+        self.beta_T = nn.Parameter(torch.tensor(0.5))   # target-trace weight
+        self.beta_D = nn.Parameter(torch.tensor(-0.1))  # distractor-trace weight
+        self.raw_eta_T = nn.Parameter(torch.tensor(0.0))
         self.raw_eta_D = nn.Parameter(torch.tensor(0.0))
-        self.g_I = nn.Parameter(torch.tensor(0.0))         # IoR penalty (0 = off)
+        self.g_I = nn.Parameter(torch.tensor(-0.5))     # IoR penalty
+        self.raw_sigma = nn.Parameter(torch.tensor(-12.0))  # trace spread (off)
 
     @property
     def k(self):
@@ -62,16 +51,19 @@ class SearchEs2Model(nn.Module):
     def eta_D(self):
         return torch.sigmoid(self.raw_eta_D)
 
-    def envelope(self, d):
-        return torch.sigmoid(self.k * (1.0 - d))
+    @property
+    def sigma(self):
+        return nn.functional.softplus(self.raw_sigma)
 
-    def compute_traces(self, eT, eD, present):
-        """Scan the trial sequence once; returns traces AS OF each trial.
-
-        eT, eD: [S, T, NLOC] one-hot event maps (target / singleton
-        location per trial); present: [S, T] singleton presence.
-        Trace used on trial t reflects trials < t only.
-        """
+    def compute_traces(self, eT, eD, dmat=None):
+        """Replay the trial sequences; return the memories AS OF each
+        trial. Optional dmat [S, 6, 6] spreads updates over ring
+        neighbors with width sigma (the sigma_h variant)."""
+        if dmat is not None:
+            K = torch.exp(-dmat ** 2 / (2 * self.sigma ** 2 + 1e-8))
+            K = K / K.sum(-1, keepdim=True)
+            eT = torch.einsum("stj,sjk->stk", eT, K)
+            eD = torch.einsum("stj,sjk->stk", eD, K)
         S, T, L = eT.shape
         hT = torch.zeros(S, L)
         hD = torch.zeros(S, L)
@@ -84,25 +76,34 @@ class SearchEs2Model(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, d, isT, isS, hT, hD, visited=None):
-        stim = 1.0 + self.g_T * isT + self.g_S * isS
-        if self.combine == "add":
-            F = stim - self.k * d + self.beta_T * hT + self.beta_D * hD
-        else:
-            F = self.envelope(d) * stim + self.beta_T * hT + self.beta_D * hD
-        if visited is not None:
-            F = F + self.g_I * visited.float()
-        return F
-
-    def log_prob(self, d, isT, isS, hT, hD, valid, choice, visited=None):
-        """valid: [N, NLOC] choice-set mask (setsize + fixated-item
-        exclusion); choice: [N] index of the landed item."""
-        F = self.field(d, isT, isS, hT, hD, visited)
-        F = F.masked_fill(~valid, -1e9)
-        return torch.log_softmax(F, dim=1).gather(1, choice[:, None]).squeeze(1)
+    def field(self, P, FORM, dist, visited, hT, hD, radii):
+        win_ray = torch.sigmoid(self.k * (self.r0 - radii))
+        mix = (self.g_T * P[..., 0] + self.g_O * P[..., 1]
+               + self.w_p * P[..., 2])
+        stim = (torch.relu(mix) * win_ray).sum(-1) + self.g_form * FORM
+        win_item = torch.sigmoid(self.k * (self.r0 - dist))
+        return stim + win_item * (self.beta_T * hT + self.beta_D * hD
+                                  + self.g_I * visited.float())
 
     def named_values(self):
-        return dict(k=self.k.item(), g_T=self.g_T.item(), g_S=self.g_S.item(),
-                    beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
-                    eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
-                    g_I=self.g_I.item())
+        return {n: round(v, 4) for n, v in dict(
+            g_T=self.g_T.item(), g_O=self.g_O.item(), w_p=self.w_p.item(),
+            g_form=self.g_form.item(), k=self.k.item(), r0=self.r0.item(),
+            beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
+            eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
+            g_I=self.g_I.item(), sigma=self.sigma.item()).items()}
+
+    def load_values(self, w):
+        import numpy as np
+        with torch.no_grad():
+            for n in ("g_T", "g_O", "w_p", "g_form", "r0",
+                      "beta_T", "beta_D", "g_I"):
+                getattr(self, n).copy_(torch.tensor(float(w[n])))
+            self.raw_k.copy_(torch.tensor(float(np.log(np.expm1(w["k"])))))
+            self.raw_eta_T.copy_(torch.logit(torch.tensor(float(w["eta_T"]))))
+            self.raw_eta_D.copy_(torch.logit(torch.tensor(float(w["eta_D"]))))
+        return self
+
+
+def load_final(path="weights_final.json"):
+    return SearchModel().load_values(json.load(open(path)))
