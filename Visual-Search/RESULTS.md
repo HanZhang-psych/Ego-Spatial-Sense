@@ -573,6 +573,54 @@ genuinely LESS information than the label would need a principled
 degradation (e.g. eccentricity-dependent acuity); the gated_shape
 result is that test at window granularity, and the data reject it.
 
+## Scope narrowed to first fixations (Han's decision)
+
+The model of record now predicts the FIRST saccade of each trial
+only, launched from central fixation. Two structural consequences:
+the IoR term is removed (items can only be "already visited" from
+the second saccade on - g_I was unidentifiable in scope), and EVERY
+term, shape included, is gated by the attention window. From central
+fixation all ring items are equidistant, so the window is flat
+across items - a shared gain doing no selective work - and is kept
+because it is theoretically defined (the ego-anchored window), not
+because first-saccade data constrain it. This also dissolves the
+gating fork: with one vantage point, gated and ungated shape are
+reparameterizations of each other. Nine weights remain: a, b,
+g_form, k, r0, beta_T, beta_D, eta_T, eta_D.
+
+Fits (124,834 first saccades; same subject split):
+
+- final: held-out NLL 1.38849 - better than the all-saccade model
+  evaluated on first saccades (1.4091): the dedicated fit no longer
+  compromises to serve later saccades.
+- no_shape: 1.59033 (still the largest single ablation)
+- no_traces: 1.52374
+- no_color (a=b=0): 1.39468 - only ~155 total. At the first
+  saccade, with shape and the traces in place, the whole color
+  channel is nearly dispensable - a sharp contrast with shape
+  (~5,100) and the traces (~3,350).
+- rectify_first: 1.38594 - the rectification fork, a tie in the
+  all-saccade model, now leans slightly toward rectify-first (~62
+  total). Rectify-after is kept as the convention; the fork is
+  recorded as open and leaning.
+
+Reproductions (held-out subjects): suppression present (model
+41.8 / 10.2 / 12.4 vs observed 40.3 / 7.0 / 13.6 - the singleton
+sits below plain items, though the margin is weaker than observed);
+priming clean (target repeat/change 76.3/35.1 vs 71.2/35.2;
+distractor-repeat drop reproduced); W&T HP-location capture
+reduction intact (7.99% HP vs 10.39% LP).
+
+**Color-term identifiability, sharpened.** The fitted (a, b) came
+out sign-flipped (a = -0.116, b = +0.078). Diagnosis: the known
+two-color ridge. Freezing b = 0 refits to a = +0.045 at held-out
+1.38998 - within ~37 total of the free fit - so (a, b) is a nearly
+flat direction and individual signs mean nothing here; only the
+combined green-vs-red contrast is identified. The small a under
+b = 0 also shows the color channel carries little at the first
+saccade once shape and the traces are in; its full price is the
+no-color ablation above.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

@@ -2,7 +2,7 @@
 
 build_tensors() turns dataset/saccades_ctx.csv + dataset/events.csv
 into the tensors every fit and analysis uses: per-saccade choice sets,
-choices, item roles, distances, within-trial visited sets, and the
+choices, item roles, distances, and the
 per-subject trial-ordered event maps that drive the memory traces.
 subject_split() is the standard held-out-people split (seed 0, 20%).
 """
@@ -46,6 +46,8 @@ def build_tensors(sacc, ev):
     sacc = sacc.merge(ev[key + ["si", "ti"]], on=key, how="inner")
     if len(sacc) != n_before:
         raise RuntimeError(f"merge lost {n_before - len(sacc)} saccades")
+    # model scope: first fixations only
+    sacc = sacc[sacc.saccindex == 1].reset_index(drop=True)
 
     N = len(sacc)
     d = torch.ones(N, NLOC)
@@ -63,24 +65,9 @@ def build_tensors(sacc, ev):
     valid[rows[fixated], fix[fixated] - 1] = False
     choice = torch.tensor(sacc.choice.values) - 1
 
-    # within-trial visited-items mask (previous landings this trial)
-    visited = torch.zeros(N, NLOC, dtype=torch.bool)
-    order = sacc.sort_values(key + ["saccindex"]).index
-    prev_key, seen = None, set()
-    for idx in order:
-        r = sacc.loc[idx]
-        tk = (r.study, r.subj, r.block, r.trial)
-        if tk != prev_key:
-            prev_key, seen = tk, set()
-        for j in seen:
-            if j != r.fixloc:
-                visited[idx, j - 1] = True
-        seen.add(int(r.choice))
-        if r.fixloc > 0:
-            seen.add(int(r.fixloc))
     return sacc, dict(eT=eT, eD=eD, si=torch.tensor(sacc.si.values),
                       ti=torch.tensor(sacc.ti.values), d=d, valid=valid,
-                      choice=choice, visited=visited)
+                      choice=choice)
 
 
 def subject_split(tt, frac=0.2, seed=0):

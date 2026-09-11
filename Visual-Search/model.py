@@ -1,19 +1,20 @@
-"""The final search model - minimal perceptual module.
+"""The final search model - first fixations only.
 
-Stimulus terms, all computed from the color-contrast maps:
+Scope: the model predicts the FIRST saccade of each trial, launched
+from central fixation. Every term is gated by the attention window:
 
   mix(x) = a * (target-color contrast at x)
          - b * (distractor-color contrast at x)
   F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * relu(mix)
-      + g_form*FORM_i
-      + sigmoid(k*(r0 - dist_i)) * ( beta_T*hT_i + beta_D*hD_i
-                                     + g_I*visited_i )
+      + sigmoid(k*(r0 - dist_i)) * ( g_form*FORM_i
+                                     + beta_T*hT_i + beta_D*hD_i )
 
-  The window gates the color evidence (bin-by-bin along the rays) and
-  the memory terms (at the item's distance) - but NOT shape: gating
-  shape was tested and rejected (~950 held-out NLL) - template-match
-  evidence behaves as if its window is effectively flat, pointing at
-  channel-specific windows.
+From central fixation all ring items are equidistant, so the window
+is flat across items and acts as a shared gain - it does no selective
+work here, and is kept because it is theoretically defined (the
+ego-anchored attention window), not because these data constrain it.
+No IoR term: within-trial inhibition of return only exists from the
+second saccade on, outside this model's scope.
 
 a = enhance the target color; b = suppress the distractor color (the
 two are nearly yoked within any single color-pair study - only their
@@ -47,7 +48,6 @@ class SearchModel(nn.Module):
         self.beta_D = nn.Parameter(torch.tensor(-0.1))
         self.raw_eta_T = nn.Parameter(torch.tensor(0.0))
         self.raw_eta_D = nn.Parameter(torch.tensor(0.0))
-        self.g_I = nn.Parameter(torch.tensor(-0.5))     # IoR penalty
         self.raw_sigma = nn.Parameter(torch.tensor(-12.0))  # trace spread (off)
 
     @property
@@ -84,8 +84,8 @@ class SearchModel(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, P, FORM, dist, visited, hT, hD, radii, cphi, sphi,
-              rect="after", shape_gated=False):
+    def field(self, P, FORM, dist, hT, hD, radii, cphi, sphi,
+              rect="after"):
         """cphi/sphi: per-observation cosine/sine of the angle between
         the distractor color and the target color in opponency space
         (0 on singleton-absent trials). rect: "after" rectifies the
@@ -102,10 +102,8 @@ class SearchModel(nn.Module):
             drive = torch.relu(self.a * P[..., 0] - self.b * d_proj)
         stim = (drive * win_ray).sum(-1)
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
-        shape_term = (win_item * self.g_form * FORM if shape_gated
-                      else self.g_form * FORM)
-        return stim + shape_term + win_item * (
-            self.beta_T * hT + self.beta_D * hD + self.g_I * visited.float())
+        return stim + win_item * (
+            self.g_form * FORM + self.beta_T * hT + self.beta_D * hD)
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(
@@ -113,13 +111,13 @@ class SearchModel(nn.Module):
             g_form=self.g_form.item(), k=self.k.item(), r0=self.r0.item(),
             beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
             eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
-            g_I=self.g_I.item(), sigma=self.sigma.item()).items()}
+            sigma=self.sigma.item()).items()}
 
     def load_values(self, w):
         import numpy as np
         with torch.no_grad():
             for n in ("a", "b", "g_form", "r0",
-                      "beta_T", "beta_D", "g_I"):
+                      "beta_T", "beta_D"):
                 getattr(self, n).copy_(torch.tensor(float(w[n])))
             self.raw_k.copy_(torch.tensor(float(np.log(np.expm1(w["k"])))))
             self.raw_eta_T.copy_(torch.logit(torch.tensor(float(w["eta_T"]))))

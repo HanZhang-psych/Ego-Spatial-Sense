@@ -4,8 +4,8 @@
   python reproduce.py --which gaspelin
   python reproduce.py --which wang
 
-Gaspelin battery (held-out subjects): oculomotor suppression,
-suppression across saccade indices 1-5, intertrial location priming.
+Gaspelin battery (held-out subjects, first saccades - the model's
+scope): oculomotor suppression, intertrial location priming.
 Wang & Theeuwes: high-probability distractor-location simulation
 (capture reduction at the HP location, target cost there, gradient).
 """
@@ -30,8 +30,7 @@ def model_probs(m, sacc, tt, P, FORM):
         cphi, sphi = color_angles(sacc)
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII,
-                    cphi, sphi)
+        F = m.field(P, FORM, tt["d"], hT, hD, RADII, cphi, sphi)
         F = F.masked_fill(~tt["valid"], -1e9)
         return torch.softmax(F, 1)
 
@@ -74,15 +73,6 @@ def gaspelin(m):
     print(f"observed  {ot:5.1f}   {os_:6.1f}   {ons:6.1f}")
     print(f"model     {mt:5.1f}   {ms:6.1f}   {mns:6.1f}")
 
-    print("\n== suppression effect by saccade index ==")
-    for k in range(1, 6):
-        mk = held & (sacc.saccindex == k).values & sp.numpy()
-        if mk.sum() < 200:
-            continue
-        ot, os_, ons, mt, ms, mns = rates(mk)
-        print(f"  {k}: observed {os_-ons:+6.1f}  model {ms-mns:+6.1f}  "
-              f"n={int(mk.sum())}")
-
     ev2 = ev.copy()
     ev2["block"] = pd.to_numeric(ev2["block"], errors="coerce").fillna(0.0)
     ev2["trial"] = pd.to_numeric(ev2["trial"], errors="coerce")
@@ -123,6 +113,7 @@ def wang(m, runs=400, trials=400, hp=0):
     lut = {}
     with torch.no_grad():
         win = torch.sigmoid(m.k * (m.r0 - RADII))
+        wi = torch.sigmoid(m.k * (m.r0 - 0.5)).item()
         for _, r in keys.iterrows():
             ci = int(r.ctx)
             has_sing = int(r.singLoc) > 0
@@ -130,10 +121,9 @@ def wang(m, runs=400, trials=400, hp=0):
                      if has_sing else 0.0)
             mix = m.a * P[ci, :, :, 0] - m.b * dproj
             lut[(int(r.targLoc), int(r.singLoc))] = \
-                (torch.relu(mix) * win).sum(-1) + m.g_form * FORM[ci]
+                (torch.relu(mix) * win).sum(-1) + wi * m.g_form * FORM[ci]
     etaT, etaD = m.eta_T.item(), m.eta_D.item()
     bT, bD = m.beta_T.item(), m.beta_D.item()
-    wi = torch.sigmoid(m.k * (m.r0 - 0.5)).item()
     rng = np.random.default_rng(1)
     acc = dict(cap_hp=[0, 0], cap_lp=[0, 0], targ_hp=[0, 0], targ_lp=[0, 0])
     dist_acc = {1: [0, 0], 2: [0, 0], 3: [0, 0]}

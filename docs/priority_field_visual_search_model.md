@@ -10,16 +10,19 @@ implemented and fitted in `Visual-Search/` (RESULTS.md there); the
 action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
-**Final model of record (search side), one sentence:** one priority
-map assembled from minimal goal-weighted evidence — a·(target-color
-contrast) − b·(distractor-color contrast), rectified — with the two
-world-anchored leaky location traces and within-trial IoR written in
-signed, read through a fixed ego-anchored sigmoid attention window;
-the template-shape term joins OUTSIDE the window (gating it is
-rejected — decisively with the final pixel channel; a weak matcher
-briefly flipped this fork, see RESULTS — channel-specific distance
-profiles, converging with the agent, whose goal channel likewise has
-its own distance gain); softmax readout; ten fitted weights. The
+**Final model of record (search side), one sentence:** scoped to the
+FIRST saccade of each trial (launched from central fixation), one
+priority map assembled from minimal goal-weighted evidence —
+a·(target-color contrast) − b·(distractor-color contrast), rectified
+— plus the pixel-derived template-shape term and the two
+world-anchored leaky location traces, ALL gated by the ego-anchored
+sigmoid attention window (which is flat across the equidistant ring
+items in scope: a shared gain kept on theoretical definition, not
+data constraint); no IoR term (unidentifiable before the second
+saccade); softmax readout; nine fitted weights. The narrowed scope
+dissolves the shape-gating fork (one vantage point makes gated and
+ungated reparameterizations); the earlier all-saccade tests of that
+fork are preserved in RESULTS. The
 shape channel is pixel-derived: displays are reconstructed
 canonically (target = circle, green items, red singleton — each
 subject's template and colors were fixed all session, so only
@@ -28,8 +31,9 @@ discriminative normalized cross-correlation (circle NCC minus the
 best competing shape's). Disclosed limit: the data never record item
 shapes, so the reconstruction places the circle at targLoc by
 construction — the pixel channel makes the pathway realistic, not
-the display's provenance, and its fit (1.2376) sits within 0.005 of
-the analytic label (1.2333). Every structural choice (traces, IoR,
+the display's provenance, and its fit sat within 0.005 of the
+analytic label when both were tested (all-saccade era, 1.2376 vs
+1.2333; the scoped first-fixation numbers live in RESULTS). Every structural choice (traces, IoR,
 goal-early assembly, window form, history ordering, the dropped
 presence and salience channels, the kept shape term, the
 rectification placement) was decided or priced by held-out
