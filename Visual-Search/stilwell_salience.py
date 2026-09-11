@@ -63,7 +63,7 @@ def probs(targCol, singCol, targLoc, singLoc):
     return torch.softmax(F_, 1)[0].detach().numpy()
 
 path = (sys.argv[1] if len(sys.argv) > 1 else
-        "../../search_data/Data Files/Stilwell2023.txt")
+        "../search_data/Data Files/Stilwell2023.txt")
 df = pd.read_csv(path, sep="\t", low_memory=False)
 fs = df[(df.saccindex == 1) & (df.singType == "sing") & (df.currloc >= 1)]
 lut = {}
