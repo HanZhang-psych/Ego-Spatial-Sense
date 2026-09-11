@@ -674,6 +674,31 @@ per-study gains, spatially spreading traces (the W&T gradient), or
 richer history kernels; the remaining ~1.3 nats look like genuine
 first-saccade stochasticity.
 
+## Stilwell's salience-graded suppression: reproduced out-of-sample
+
+Han's question: can the model reproduce Stilwell's finding that MORE
+salient singletons receive GREATER suppression? The canonicalization
+had made this manipulation invisible to the fit (all singletons
+"red"). Test (`stilwell_salience.py`): apply weights_final,
+unchanged, to Stilwell's displays rendered with their TRUE colors,
+zero traces:
+
+  high salience: observed  7.0%   model  8.3%
+  low  salience: observed 11.3%   model 11.4%
+
+Per-pair structure tracks too: blue targ/red sing 7.8 (obs 7.0);
+blue/teal 11.2 (11.0); pink/blue 8.7 (7.6); red/pink - the least
+salient pairing - 15.5 (obs 14.8), above everything else. Mechanism:
+a near-target-color singleton projects partly onto the target axis
+and weakly onto its own, escaping the signed -b suppression; a
+chromatically distant one takes the full hit. Nothing was added or
+refitted - the gradient falls out of the two-axis color module on
+colors the fit never saw, buying back most of what canonicalization
+discarded. Caveats: our pink/teal/blue RGBs are plausible guesses,
+not Stilwell's calibrated coordinates; the small teal counterbalance
+cells (n~270) carry a high/low label the model cannot distinguish
+(same color pair) and are missed.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
