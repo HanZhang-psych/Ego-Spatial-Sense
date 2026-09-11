@@ -595,10 +595,22 @@ Fits (124,834 first saccades; same subject split):
   compromises to serve later saccades.
 - no_shape: 1.59033 (still the largest single ablation)
 - no_traces: 1.52374
-- no_color (a=b=0): 1.39468 - only ~155 total. At the first
-  saccade, with shape and the traces in place, the whole color
-  channel is nearly dispensable - a sharp contrast with shape
-  (~5,100) and the traces (~3,350).
+- no_color (a=b=0): 1.39468 - only ~155 total. But the small
+  price is a lesson in what likelihood measures, not evidence the
+  channel is idle (Han's challenge). Rerunning the battery with the
+  no-color model: the suppression effect VANISHES - singleton 12.1%
+  vs plain 12.0% (final model: 10.2 vs 12.4; observed: 7.0 vs 13.6)
+  - leaving only the h_D location-priming component. Color's
+  target-enhancement role is redundant with shape here (the circle
+  is unique, so "find green circle" = "find circle"), but its
+  relegation role - keeping the eyes off the red item, below the
+  plain-item baseline - is color's alone. Singleton fixations are
+  ~7% of first saccades, so abolishing suppression costs almost no
+  likelihood while destroying the dataset's signature phenomenon.
+  This also makes sense of the ridge basis the free fit chose
+  (a = -0.116, b = +0.078): that combination is the one whose relu
+  clips the RED item - the fit spends color where it has unique
+  work (relegation) and leaves target-attraction to shape.
 - rectify_first: 1.38594 - the rectification fork, a tie in the
   all-saccade model, now leans slightly toward rectify-first (~62
   total). Rectify-after is kept as the convention; the fork is
