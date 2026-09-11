@@ -20,7 +20,7 @@ of the distractor color; the fully linear signed field fits identically to
 within noise, and rectify-after-the-gains remains rejected) — plus
 the pixel-derived template-shape map and the two world-anchored
 leaky location traces rendered as a HISTORY FIELD (each item's
-trace value placed at its location, smoothed by a fixed sigma=0.09
+trace value placed at its location, smoothed by a fixed sigma=0.03
 kernel — a stated assumption). All of it forms ONE pre-window
 priority map over the display; the ego-anchored sigmoid attention
 window multiplies that map pixel by pixel (in scope the fitted

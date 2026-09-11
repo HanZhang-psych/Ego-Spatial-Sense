@@ -152,7 +152,7 @@ def template_axis(targCol):
     return (rg / n, by / n) if n > 1e-6 else (1.0, 0.0)
 
 
-PAINT_SIG = 0.09      # fixed history-smoothing kernel (model assumption)
+PAINT_SIG = 0.03      # fixed history-smoothing kernel (model assumption)
 
 
 def sector_geometry(setsize):
@@ -234,6 +234,11 @@ def history_matrix(setsize):
         bump = np.exp(-((xx - px) ** 2 + (yy - py) ** 2)
                       / (2 * (PAINT_SIG * px_per_unit) ** 2))
         HM[:, jslot] = _bin_map(bump, si, bi, denom, setsize)
+    # normalize so a unit history contributes unit binned mass in its
+    # own sector (pure reparameterization; keeps the betas O(1) and
+    # makes PAINT_SIG control spread only, not weight)
+    HM /= max(float(np.einsum("iid->i",
+                              HM[:setsize, :setsize]).mean()), 1e-9)
     return HM
 
 

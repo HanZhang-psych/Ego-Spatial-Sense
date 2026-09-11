@@ -835,9 +835,13 @@ rides inside the pre-window map like everything else.
 
 Numbers: first fit hit an optimization wall (1.41897; beta_T 14.6,
 eta_T pinned 0.997 - the unnormalized HM mass ~0.135 ill-scaled the
-problem). Normalizing HM to unit own-sector mass (pure
-reparameterization) and 600 epochs: held-out NLL 1.39368 - BETTER
-than the per-item/ray form's 1.39920 (~125 total). Batteries:
+problem). CORRECTION (caught later): the intended HM normalization
+was reported as applied here but had never landed in the file; the
+1.39368 result below was fit with UNNORMALIZED HM, rescued by 600
+epochs alone (its beta_T = 17.6 was absorbing the 0.135 mass). The
+normalization went in verified later - see the sigma = 0.03 entry.
+600 epochs: held-out NLL 1.39368 - BETTER than the per-item/ray
+form's 1.39920 (~125 total). Batteries:
 suppression 43.0 / 6.9 / 13.0 (obs 40.3 / 6.8 / 13.7); priming
 74.0/35.7 and 4.1/7.3 (obs 70.0/35.6, 2.9/7.3); Stilwell gradient
 correctly ordered though over-suppressed (5.2 / 9.7 vs obs
@@ -869,6 +873,24 @@ only ~56% of the chance-to-softmax gap - the rest is carried by the
 GRADED priorities below the winner (the second-best item draws more
 saccades than the third-best), which softmax uses and argmax
 discards.
+
+## Kernel width sigma = 0.03; HM normalization actually landed
+
+Han set the history-smoothing kernel to sigma = 0.03 (from 0.09).
+Two fits failed first (cold 1.48233, warm-started 1.50189, etas
+pinning at ~1) - diagnosis: the unnormalized kernel's mass scales
+with sigma^2, so the narrower kernel silently shrank the history
+term ~9x and the betas could not climb fast enough. Root cause: the
+unit-mass HM normalization believed to be in build_contexts.py had
+never actually been written to the file (an unverified patch,
+reported as applied - now corrected above). With the normalization
+in and VERIFIED (diagonal sums exactly 1), sigma = 0.03 fits best
+of all forms: held-out NLL 1.39041 (vs 1.39368 unnormalized
+sigma = 0.09; 1.39920 per-item), with readable parameters (beta_T
+4.62, beta_D -1.08, eta 0.60/0.16) and all batteries intact
+(suppression 43.0/7.0/13.0; priming 74.8/35.5, 4.0/7.4; Stilwell
+gradient ordered). Normalization makes sigma control spread only,
+not weight; the notebook's paint_slots mirrors it.
 
 ## Caveats on record
 
