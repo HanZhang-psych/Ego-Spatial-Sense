@@ -35,7 +35,17 @@ MAXR = 1.1
 
 
 def opponency_contrast(img):
-    """Signed multiscale DoG contrast on fixed axes; unsigned intensity."""
+    """Measure local visual contrast in color-opponent coordinates.
+
+    This is an Itti-Koch-like center-surround front end, but it does
+    not collapse everything into one unsigned salience map. It returns
+    signed red-vs-green (RG) and blue-vs-yellow (BY) contrast maps, so
+    the model can tell which color direction differs from the
+    surround, plus an unsigned intensity/presence map (P) that says
+    where any visible object contrast exists. Later code rotates the
+    signed color maps into target-relative axes and combines them with
+    fitted gains to build the goal-modified priority map.
+    """
     r, g, b = img[..., 0], img[..., 1], img[..., 2]
     out = {}
     for name, m in [("RG", r - g), ("BY", b - (r + g) / 2)]:
