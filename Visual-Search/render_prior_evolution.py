@@ -98,14 +98,13 @@ def main():
         ev_T.append(targ)
         ev_S.append(sing)
 
-    vmax = max(snaps[k].max() for k in snaps)
-    vmin = min(snaps[k].min() for k in snaps)
-    # two-slope norm: enhancement and suppression each use their full
-    # half of the colormap (a symmetric scale hides the shallow
-    # suppression under the ~7x larger target bump)
-    from matplotlib.colors import TwoSlopeNorm
-    norm = TwoSlopeNorm(vcenter=0.0, vmin=min(vmin, -1e-6),
-                        vmax=max(vmax, 1e-6))
+    # symmetric scale: in EXPECTATION the HP slot's suppression and
+    # its (deficient) target-history prior nearly cancel, so the
+    # honest picture is a neutral hole in a red ring - an asymmetric
+    # norm would stretch the ~0.02 residual negative into full blue
+    from matplotlib.colors import Normalize
+    vmax = max(abs(snaps[k]).max() for k in snaps)
+    norm = Normalize(vmin=-vmax, vmax=vmax)
     fig = plt.figure(figsize=(15, 6.4))
     gs = fig.add_gridspec(2, 5, height_ratios=[2.2, 1])
     titles = ["trial 0 (no history)", "trial 10 (biased)", "trial 30 (biased)",
@@ -154,8 +153,7 @@ def main():
     plt.tight_layout(rect=[0.015, 0, 0.955, 0.95])
     cax = fig.add_axes([0.965, 0.42, 0.011, 0.46])
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("prior (red = enhance, blue = suppress;\n"
-                 "halves scaled separately)", fontsize=8)
+    cb.set_label("expected prior (symmetric scale)", fontsize=8)
     fig.suptitle("Pre-onset spatial prior F_pre = window x history, W&T "
                  "HP-distractor design (maps: expected over sequences; "
                  "curves: one example sequence)", fontsize=12)
