@@ -364,6 +364,24 @@ exactly where W&T observed the gradient and where the agent-side
 spread trace earned its keep. A biased-design human fit is the
 experiment that would estimate it.
 
+## Reconstruction correction: feature-search displays
+
+The initial reconstruction rendered the target diamond among identical
+circles - accidentally a shape-singleton display, which the source
+studies' inclusion criteria specifically avoid. Corrected: nontarget
+shapes are heterogeneous (circle/square/triangle/cross), matching the
+feature-search paradigm. Refit on rebuilt contexts: every
+psychological parameter unchanged to two decimals (beta_T 1.87,
+beta_D -0.26, eta_T 0.63, eta_D 0.20, g_I -2.10); held-out NLL 1.2471
+(vs 1.2408 before) - shape enters the model only through the analytic
+form channel, so the fit is invariant as the architecture predicts.
+Parameter audit: set size (6 per study; Hamblin 4), colors (including
+Stilwell's within-study singleton-salience colors and Gaspelin 2019's
+four counterbalanced pairs), and item distances are all taken
+per-trial from the data files; shapes, item size, and background are
+paper-sourced reconstruction assumptions (the display-parameter
+details are not in the OSF trial files or summary workbook).
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

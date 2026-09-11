@@ -49,12 +49,34 @@ def render(items):
     r_px = ITEM_R / 1.5 * IMG
     for it in items:
         cx, cy = to_px(it["x"]), to_px(it["y"])
-        if it.get("shape", "circle") == "diamond":
+        shape = it.get("shape", "circle")
+        if shape == "diamond":
             mask = (np.abs(xx - cx) + np.abs(yy - cy)) < 1.3 * r_px
+        elif shape == "square":
+            mask = (np.abs(xx - cx) < 0.95 * r_px) & (np.abs(yy - cy) < 0.95 * r_px)
+        elif shape == "triangle":
+            mask = ((yy - cy > -0.9 * r_px)
+                    & (np.abs(xx - cx) < 0.95 * r_px * (1 - (yy - cy + 0.9 * r_px)
+                                                        / (2.0 * r_px))))
+        elif shape == "cross":
+            mask = (((np.abs(xx - cx) < 0.45 * r_px) & (np.abs(yy - cy) < 1.1 * r_px))
+                    | ((np.abs(yy - cy) < 0.45 * r_px) & (np.abs(xx - cx) < 1.1 * r_px)))
         else:
             mask = (xx - cx) ** 2 + (yy - cy) ** 2 < r_px ** 2
         img[mask] = COLORS[it["color"]]
     return img
+
+
+NONTARGET_SHAPES = ["circle", "square", "triangle", "cross", "hexagon"]
+
+
+def shape_for(slot, targ_slot, template_shape="diamond"):
+    """Feature-search displays: the target is the template shape among
+    HETEROGENEOUS nontarget shapes (the target is never a shape
+    singleton - inclusion criterion of the source studies)."""
+    if slot == targ_slot:
+        return template_shape
+    return NONTARGET_SHAPES[slot % 4]
 
 
 def _gauss_blur(m, sigma):
@@ -133,15 +155,14 @@ def ray_scan(maps, fix_xy, n_rays=90, n_bins=48, max_r=1.1):
 
 
 def demo_display():
-    """Gaspelin-style display: green diamond target among green circles,
-    one red circle singleton; 6 items on the ring."""
+    """Gaspelin-style feature-search display: green diamond target among
+    HETEROGENEOUS green nontarget shapes, one red singleton; 6 items."""
     items = []
     for j in range(6):
         a = 2 * np.pi * j / 6 - np.pi / 2
         color = "red" if j == 4 else "green"
-        shape = "diamond" if j == 1 else "circle"
         items.append(dict(x=ECC * np.cos(a), y=ECC * np.sin(a),
-                          color=color, shape=shape))
+                          color=color, shape=shape_for(j + 1, 2)))
     return items
 
 
