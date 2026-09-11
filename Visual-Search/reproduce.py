@@ -24,12 +24,20 @@ from model import load_final, color_angles
 RADII = torch.linspace(0.09, MAXR, NBINS)
 
 
-def model_probs(m, sacc, tt, P, FORM):
+def model_probs(m, sacc, tt, P, FP, HM6, HM4):
     with torch.no_grad():
         cphi, sphi = color_angles(sacc)
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(P, FORM, tt["d"], hT, hD, RADII, cphi, sphi)
+        m6 = torch.tensor((sacc.setsize == 6).values)
+
+        def hp(h):
+            out = torch.zeros(h.shape[0], 6, P.shape[2])
+            out[m6] = torch.einsum("ijd,nj->nid", HM6, h[m6])
+            out[~m6] = torch.einsum("ijd,nj->nid", HM4, h[~m6])
+            return out
+
+        F = m.field(P, FP, hp(hT), hp(hD), RADII, cphi, sphi)
         F = F.masked_fill(~tt["valid"], -1e9)
         return torch.softmax(F, 1)
 
@@ -39,8 +47,9 @@ def gaspelin(m):
     sacc, tt = data.build_tensors(sacc, ev)
     ctx = np.load("dataset/contexts_v21.npz")
     cid = torch.tensor(sacc.ctx.values.astype(int))
-    P, FORM = torch.tensor(ctx["P"])[cid], torch.tensor(ctx["FORM"])[cid]
-    prob = model_probs(m, sacc, tt, P, FORM)
+    P, FP = torch.tensor(ctx["P"])[cid], torch.tensor(ctx["FORMP"])[cid]
+    prob = model_probs(m, sacc, tt, P, FP,
+                       torch.tensor(ctx["HM6"]), torch.tensor(ctx["HM4"]))
     _, test = data.subject_split(tt)
     held = test.numpy()
 

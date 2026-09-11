@@ -1,44 +1,33 @@
-"""The final search model - first fixations only.
+"""The final search model - first fixations only, one construction.
 
-Scope: the model predicts the FIRST saccade of each trial, launched
-from central fixation. Every term is gated by the attention window:
+The model builds a PRE-WINDOW priority map over the display -
 
-  mix(x) = g_T * relu(target-color contrast at x)
+  map(x) = g_T * relu(target-color contrast at x)
          - g_D * relu(distractor-color contrast at x)
-  F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * mix
-      + sigmoid(k*(r0 - dist_i)) * ( g_F*FORM_i
-                                     + beta_T*hT_i + beta_D*hD_i )
+         + g_F * shape match at x
+         + beta_T * h_T field(x) + beta_D * h_D field(x)
+
+(the history fields are each item's history value smoothed by a
+fixed spatial kernel, PAINT_SIG in build_contexts.py - a stated
+model assumption) - multiplies it by the ego-anchored attention
+window sigmoid(k*(r0 - d)), and reads it out as the average over
+each item's sector (a pie slice of the display). Softmax over the
+sector averages predicts the first saccade.
+
+Implementation: the readout is precomputed as sector x distance-bin
+area averages (build_contexts.py), so
+
+  F_i = sum over bins d of  sigmoid(k*(r0 - radii_d)) *
+        [ g_T*relu(P_T[i,d]) - g_D*relu(P_dist[i,d]) + g_F*FP[i,d]
+          + beta_T*HTP[i,d] + beta_D*HDP[i,d] ]
+
+which equals the sector average of window x map, discretized over
+the distance bins. HTP/HDP = HM @ h with HM the precomputed binned
+history-kernel geometry.
 
 Notation: g_* are the stimulus gains (g_T target-color enhancement,
 g_D distractor-color suppression, g_F shape/form), beta_* the
 history gains, eta_* the memory speeds, k/r0 the attention window.
-
-ONE-SIDED color channels (Han's decision, for interpretability):
-each channel is rectified BEFORE its gain, so g_T acts only where
-the target-color channel is positive (pure enhancement) and g_D
-only where the distractor-color channel is positive (pure
-suppression) - the two parameters have separate, readable meanings
-instead of the near-unidentifiable signed-opponent pair. The price
-is nil: on first fixations this form fits 1.38594 vs 1.38547 for
-the fully linear field (a tie; rectify-AFTER the gains, 1.38849,
-remains rejected). The combined drive is still signed - b pushes
-the distractor below zero.
-
-From central fixation all ring items are equidistant, so the window
-is flat across items and acts as a shared gain - it does no selective
-work here, and is kept because it is theoretically defined (the
-ego-anchored attention window), not because these data constrain it.
-No IoR term: within-trial inhibition of return only exists from the
-second saccade on, outside this model's scope.
-
-a = enhance the target color; b = suppress the distractor color (the
-two are nearly yoked within any single color-pair study - only their
-combination is well identified there; separating them needs >=3-color
-displays). The target-color projection is the stored D_T profile; the
-distractor-color projection is a fixed per-display rotation of
-(D_T, D_O) by the angle between the two colors. No object-presence
-term: it is invisible to the softmax up to small shape-area
-differences (dropping it costs ~24 total held-out NLL).
 
 Weights live in weights_final.json (written by fit.py).
 """
@@ -99,22 +88,24 @@ class SearchModel(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, P, FORM, dist, hT, hD, radii, cphi, sphi):
-        """cphi/sphi: per-observation cosine/sine of the angle between
-        the distractor color and the target color in opponency space
-        (0 on singleton-absent trials). Channels are rectified
-        before their gains: g_T = pure enhancement of the target
-        color, g_D = pure suppression of the distractor color; the
-        combined drive is signed."""
+    def field(self, P, FP, HTP, HDP, radii, cphi, sphi):
+        """Window x (salience + history), sector-averaged, per item.
+
+        P [N,6,NBINS,3]: binned color contributions (target axis,
+        orthogonal, presence); FP [N,6,NBINS]: binned shape map;
+        HTP/HDP [N,6,NBINS]: binned history fields (HM @ h).
+        cphi/sphi: per-observation rotation of the distractor color
+        axis relative to the target axis (0 if singleton absent).
+        Channels are rectified before their gains: g_T = pure
+        enhancement, g_D = pure suppression."""
         d_proj = (cphi[:, None, None] * P[..., 0]
                   + sphi[:, None, None] * P[..., 1])
-        win_ray = torch.sigmoid(self.k * (self.r0 - radii))
-        drive = (self.g_T * torch.relu(P[..., 0])
-                 - self.g_D * torch.relu(d_proj))
-        stim = (drive * win_ray).sum(-1)
-        win_item = torch.sigmoid(self.k * (self.r0 - dist))
-        return stim + win_item * (
-            self.g_F * FORM + self.beta_T * hT + self.beta_D * hD)
+        window = torch.sigmoid(self.k * (self.r0 - radii))
+        pre_window = (self.g_T * torch.relu(P[..., 0])
+                      - self.g_D * torch.relu(d_proj)
+                      + self.g_F * FP
+                      + self.beta_T * HTP + self.beta_D * HDP)
+        return (pre_window * window).sum(-1)
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(

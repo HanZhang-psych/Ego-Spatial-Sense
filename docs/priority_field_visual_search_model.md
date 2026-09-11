@@ -17,15 +17,21 @@ g_T·relu(target-color contrast) − g_D·relu(distractor-color
 contrast): ONE-SIDED rectified channels, chosen for interpretability
 (g_T = pure enhancement of the target color, g_D = pure suppression
 of the distractor color; the fully linear signed field fits identically to
-within noise, and rectify-after-the-gains remains rejected). The
-combined drive is signed — b pushes the distractor below baseline
-(active suppression, not relegation) — plus
-the pixel-derived template-shape term and the two
-world-anchored leaky location traces, ALL gated by the ego-anchored
-sigmoid attention window (which is flat across the equidistant ring
-items in scope: a shared gain kept on theoretical definition, not
-data constraint); no IoR term (unidentifiable before the second
-saccade); softmax readout; nine fitted weights. The narrowed scope
+within noise, and rectify-after-the-gains remains rejected) — plus
+the pixel-derived template-shape map and the two world-anchored
+leaky location traces rendered as a HISTORY FIELD (each item's
+trace value placed at its location, smoothed by a fixed sigma=0.09
+kernel — a stated assumption). All of it forms ONE pre-window
+priority map over the display; the ego-anchored sigmoid attention
+window multiplies that map pixel by pixel (in scope the fitted
+window is flat — r0 beyond the display — a shared gain kept on
+theoretical definition, not data constraint), and the readout is
+each item's sector average (implemented exactly, as precomputed
+sector x distance-bin area sums; no ray sampling); no IoR term
+(unidentifiable before the second saccade); softmax over the sector
+averages; nine fitted weights. In this construction g_D fits to ~0:
+suppression is carried by relegation plus location history (see
+RESULTS, "One construction everywhere"). The narrowed scope
 dissolves the shape-gating fork (one vantage point makes gated and
 ungated reparameterizations); the earlier all-saccade tests of that
 fork are preserved in RESULTS. The

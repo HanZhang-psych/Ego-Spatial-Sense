@@ -818,6 +818,38 @@ g_form) - one g_* family alongside beta_* (history gains), eta_*
 values; weights_final.json keys updated. Ledger entries above keep
 the names in use at the time.
 
+## One construction everywhere: window x (salience + history map)
+(Han's directive)
+
+The model of record is now literally the tutorial's construction:
+a PRE-WINDOW priority map - goal-modified salience plus a history
+FIELD (each item's beta_T*h_T + beta_D*h_D placed at its location
+and smoothed with a fixed sigma = 0.09 kernel, a stated model
+assumption) - multiplied by the attention window pixel by pixel,
+then read out as each item's sector average. The former
+implementation shortcuts are gone: no ray sampling (color evidence
+is sector x distance-bin AREA averages, an exact regrouping of the
+pixel computation), no separate per-item history term (the painted
+field's binned geometry is the precomputed HM matrix), and shape
+rides inside the pre-window map like everything else.
+
+Numbers: first fit hit an optimization wall (1.41897; beta_T 14.6,
+eta_T pinned 0.997 - the unnormalized HM mass ~0.135 ill-scaled the
+problem). Normalizing HM to unit own-sector mass (pure
+reparameterization) and 600 epochs: held-out NLL 1.39368 - BETTER
+than the per-item/ray form's 1.39920 (~125 total). Batteries:
+suppression 43.0 / 6.9 / 13.0 (obs 40.3 / 6.8 / 13.7); priming
+74.0/35.7 and 4.1/7.3 (obs 70.0/35.6, 2.9/7.3); Stilwell gradient
+correctly ordered though over-suppressed (5.2 / 9.7 vs obs
+7.0 / 11.3).
+
+Two parameter-level shifts on record: g_D fits to ~0 (-0.014) - in
+this basis suppression is carried by RELEGATION (the singleton
+earns no target-color boost) plus location history, and the
+salience gradient arises from partial g_T enhancement of
+near-target colors; and r0 fits beyond the display (1.47), the
+window going fully flat - the scope note made parametric.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

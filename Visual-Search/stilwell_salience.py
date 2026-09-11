@@ -15,26 +15,12 @@ Stilwell2023.txt (not in repo).
 """
 import sys
 import numpy as np, pandas as pd, torch
-from front_end import render, item_positions, shape_for, IMG
-from build_contexts import (opponency_contrast, shape_match_map,
-                            template_axis, wedge_profiles, NBINS)
+from build_contexts import (display_evidence, history_matrix,
+                            template_axis, NBINS)
 from model import load_final
 
 def build(targCol, singCol, targLoc, singLoc):
-    pos, _ = item_positions(6)
-    items = [dict(x=pos[j][0], y=pos[j][1],
-                  color=(singCol if (j + 1) == singLoc and singCol != "none"
-                         else targCol),
-                  shape=shape_for(j + 1, targLoc)) for j in range(6)]
-    img = render(items)
-    maps = opponency_contrast(img)
-    fmap = shape_match_map(render(items, scale=2))
-    u = template_axis(targCol)
-    P, _ = wedge_profiles(maps, u, (0.0, 0.0), 6)
-    sc = fmap.shape[0] // IMG
-    to_px = lambda v: int(np.clip((v + 0.75) / 1.5 * IMG * sc, 0, IMG*sc - 1))
-    F = np.array([fmap[to_px(pos[j][1]), to_px(pos[j][0])] for j in range(6)])
-    return P.astype(np.float32), F.astype(np.float32)
+    return display_evidence(6, targLoc, singLoc, targCol, singCol)
 
 # normalization constants from the CANONICAL batch (as in build_contexts)
 print("canonical normalization pass...", flush=True)
@@ -49,10 +35,12 @@ for targLoc in range(1, 7):
 cP, cF = np.stack(cP), np.stack(cF)
 P_STD = np.abs(cP[..., :2]).std()
 F_STD = cF.std()
-print(f"P_std {P_STD:.4f}  F_std {F_STD:.4f}", flush=True)
+print(f"P_std {P_STD:.5f}  F_std {F_STD:.6f}", flush=True)
 
 m = load_final()
 RADII = torch.linspace(0.09, 1.1, NBINS)
+HM6 = torch.tensor(history_matrix(6))
+ZH = torch.zeros(1, 6, NBINS)     # zero histories (they balance)
 
 def probs(targCol, singCol, targLoc, singLoc):
     P, F = build(targCol, singCol, targLoc, singLoc)
@@ -60,9 +48,8 @@ def probs(targCol, singCol, targLoc, singLoc):
     uT, uS = template_axis(targCol), template_axis(singCol)
     cphi = torch.tensor([uT[0]*uS[0] + uT[1]*uS[1]], dtype=torch.float32)
     sphi = torch.tensor([-uT[1]*uS[0] + uT[0]*uS[1]], dtype=torch.float32)
-    z = torch.zeros(1, 6)
     F_ = m.field(torch.tensor(P)[None], torch.tensor(F)[None],
-                 torch.full((1, 6), 0.5), z, z, RADII, cphi, sphi)
+                 ZH, ZH, RADII, cphi, sphi)
     return torch.softmax(F_, 1)[0].detach().numpy()
 
 path = (sys.argv[1] if len(sys.argv) > 1 else

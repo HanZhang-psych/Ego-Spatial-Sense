@@ -152,42 +152,89 @@ def template_axis(targCol):
     return (rg / n, by / n) if n > 1e-6 else (1.0, 0.0)
 
 
-def wedge_profiles(maps, u, fix_xy, setsize):
-    """Per item: signed radial profiles D_T, D_O and unsigned D_P,
-    averaged over the item's wedge rays; plus range R (first energy)."""
-    to_px = lambda v: (v + 0.75) / 1.5 * IMG
-    fx, fy = to_px(fix_xy[0]), to_px(fix_xy[1])
-    radii = np.linspace(0.09, MAXR, NBINS)
+PAINT_SIG = 0.09      # fixed history-smoothing kernel (model assumption)
+
+
+def sector_geometry(setsize):
+    """Pixel-level geometry for the sector x distance-bin readout:
+    for each item sector (pie slice of pi/setsize half-angle... width
+    2*pi/setsize), assign every pixel within MAXR of the center to a
+    (sector, distance bin) cell. Returns (sector_idx, bin_idx, denom):
+    -1 outside; denom = pixels per sector within MAXR."""
     pos, _ = item_positions(setsize)
-    prof = np.zeros((6, NBINS, 3))
-    R = np.ones(6)
-    th_all = np.arange(NRAYS) * 2 * np.pi / NRAYS
-    for j in range(setsize):
-        dx, dy = pos[j][0] - fix_xy[0], pos[j][1] - fix_xy[1]
-        tj = np.arctan2(dy, dx) % (2 * np.pi)
-        dd = np.abs((th_all - tj + np.pi) % (2 * np.pi) - np.pi)
-        rays = np.where(dd < np.deg2rad(WEDGE_DEG))[0]
-        if len(rays) == 0:
-            rays = [int(np.argmin(dd))]
-        acc = np.zeros((NBINS, 3))
-        rr = []
-        for i in rays:
-            th = th_all[i]
-            px = np.clip(fx + to_px(radii * np.cos(th)) - to_px(0),
-                         0, IMG - 1).astype(int)
-            py = np.clip(fy + to_px(radii * np.sin(th)) - to_px(0),
-                         0, IMG - 1).astype(int)
-            crg = maps["RG"][py, px]
-            cby = maps["BY"][py, px]
-            acc[:, 0] += u[0] * crg + u[1] * cby          # template axis
-            acc[:, 1] += -u[1] * crg + u[0] * cby         # orthogonal
-            pprof = maps["P"][py, px]
-            acc[:, 2] += pprof
-            hit = np.where(pprof > 0.15 * maps["P"].max())[0]
-            rr.append(radii[hit[0]] if len(hit) else MAXR)
-        prof[j] = acc / len(rays)
-        R[j] = float(np.mean(rr))
-    return prof, R
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    to_unit = lambda p: (p / IMG) * 1.5 - 0.75
+    ux, uy = to_unit(xx + 0.5), to_unit(yy + 0.5)
+    dist = np.hypot(ux, uy)
+    ang = np.arctan2(uy, ux)
+    radii = np.linspace(0.09, MAXR, NBINS)
+    half = (radii[1] - radii[0]) / 2
+    edges = np.concatenate([[0.0], (radii[:-1] + radii[1:]) / 2,
+                            [radii[-1] + half]])
+    bin_idx = np.digitize(dist, edges) - 1
+    bin_idx[(dist >= edges[-1])] = -1
+    sector_idx = np.full(ang.shape, -1)
+    halfw = np.pi / setsize
+    for k in range(setsize):
+        ak = np.arctan2(pos[k][1], pos[k][0])
+        dd = np.abs((ang - ak + np.pi) % (2 * np.pi) - np.pi)
+        sector_idx[(dd < halfw) & (bin_idx >= 0)] = k
+    denom = float((sector_idx >= 0).sum()) / setsize
+    return sector_idx, bin_idx, denom
+
+
+def _bin_map(m, sector_idx, bin_idx, denom, setsize):
+    """Sector x distance-bin CONTRIBUTIONS of map m: out[i, d] = (sum of
+    m over the cell) / (pixels per sector), so that (window(d) *
+    out).sum(d) equals the sector average of window * m."""
+    out = np.zeros((6, NBINS))
+    ok = sector_idx >= 0
+    flat = sector_idx[ok] * NBINS + bin_idx[ok]
+    sums = np.bincount(flat, weights=m[ok], minlength=setsize * NBINS)
+    out[:setsize] = sums.reshape(setsize, NBINS) / denom
+    return out
+
+
+def display_evidence(setsize, targLoc, singLoc, targCol, singCol):
+    """One display -> the pre-window map, binned: P [6, NBINS, 3]
+    (target-axis, orthogonal, presence contributions) and FP [6, NBINS]
+    (shape-map contributions). Unnormalized."""
+    pos, _ = item_positions(setsize)
+    items = [dict(x=pos[k][0], y=pos[k][1],
+                  color=(singCol if (k + 1) == singLoc and singCol != "none"
+                         else targCol),
+                  shape=shape_for(k + 1, targLoc)) for k in range(setsize)]
+    img = render(items)
+    maps = opponency_contrast(img)
+    u = template_axis(targCol)
+    perp = (-u[1], u[0])
+    gmap = u[0] * maps["RG"] + u[1] * maps["BY"]
+    omap = perp[0] * maps["RG"] + perp[1] * maps["BY"]
+    smap = shape_match_map(render(items, scale=2))[::2, ::2]
+    si, bi, denom = sector_geometry(setsize)
+    P = np.stack([_bin_map(gmap, si, bi, denom, setsize),
+                  _bin_map(omap, si, bi, denom, setsize),
+                  _bin_map(maps["P"], si, bi, denom, setsize)], axis=-1)
+    FP = _bin_map(smap, si, bi, denom, setsize)
+    return P.astype(np.float32), FP.astype(np.float32)
+
+
+def history_matrix(setsize):
+    """HM[i, j, d]: sector i's binned contribution when item j's history
+    equals 1, using the fixed smoothing kernel PAINT_SIG. The model's
+    painted history field, precomputed as geometry."""
+    pos, _ = item_positions(setsize)
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    px_per_unit = IMG / 1.5
+    si, bi, denom = sector_geometry(setsize)
+    HM = np.zeros((6, 6, NBINS), dtype=np.float32)
+    for jslot in range(setsize):
+        px = (pos[jslot][0] + 0.75) / 1.5 * IMG
+        py = (pos[jslot][1] + 0.75) / 1.5 * IMG
+        bump = np.exp(-((xx - px) ** 2 + (yy - py) ** 2)
+                      / (2 * (PAINT_SIG * px_per_unit) ** 2))
+        HM[:, jslot] = _bin_map(bump, si, bi, denom, setsize)
+    return HM
 
 
 def main():
@@ -199,41 +246,22 @@ def main():
     n = len(keys)
     print(f"{n} unique contexts")
     P = np.zeros((n, 6, NBINS, 3), dtype=np.float32)
-    F = np.zeros((n, 6), dtype=np.float32)
-    R = np.ones((n, 6), dtype=np.float32)
+    FP = np.zeros((n, 6, NBINS), dtype=np.float32)
     cache = {}
     for _, k in keys.iterrows():
         dk = (int(k.setsize), int(k.targLoc), int(k.singLoc),
               k.targCol, k.singCol)
         if dk not in cache:
-            setsize, targLoc, singLoc, targCol, singCol = dk
-            pos, _ = item_positions(setsize)
-            items = [dict(x=pos[j][0], y=pos[j][1],
-                          color=(singCol if (j + 1) == singLoc
-                                 and singCol != "none" else targCol),
-                          shape=shape_for(j + 1, targLoc))
-                     for j in range(setsize)]
-            img = render(items)
-            img_hi = render(items, scale=2)
-            cache[dk] = (opponency_contrast(img), shape_match_map(img_hi),
-                         template_axis(targCol))
-        maps, fmap, u = cache[dk]
-        setsize = int(k.setsize)
-        pos, _ = item_positions(setsize)
-        fix = (0.0, 0.0) if k.fixloc == 0 else pos[int(k.fixloc) - 1]
+            cache[dk] = display_evidence(*dk)
         ci = int(k.ctx)
-        P[ci], R[ci] = wedge_profiles(maps, u, fix, setsize)
-        sc = fmap.shape[0] // IMG
-        to_pxf = lambda v: (v + 0.75) / 1.5 * IMG * sc
-        for j in range(setsize):
-            F[ci, j] = fmap[int(np.clip(to_pxf(pos[j][1]), 0, IMG * sc - 1)),
-                            int(np.clip(to_pxf(pos[j][0]), 0, IMG * sc - 1))]
+        P[ci], FP[ci] = cache[dk]
         if ci % 300 == 0:
             print(f"  {ci}/{n}", flush=True)
     P[..., :2] /= max(np.abs(P[..., :2]).std(), 1e-9)
     P[..., 2] /= max(P[..., 2].std(), 1e-9)
-    F /= max(F.std(), 1e-9)
-    np.savez_compressed("dataset/contexts_v21.npz", P=P, FORM=F, R=R)
+    FP /= max(FP.std(), 1e-9)
+    np.savez_compressed("dataset/contexts_v21.npz", P=P, FORMP=FP,
+                        HM6=history_matrix(6), HM4=history_matrix(4))
     merged = sacc.merge(keys, on=["setsize", "targLoc", "singLoc",
                                   "targCol", "singCol", "fixloc"], how="left")
     assert merged.ctx.notna().all()
