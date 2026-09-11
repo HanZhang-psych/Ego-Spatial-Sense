@@ -3,12 +3,13 @@
 The prior in closed form (final model, history-inside ordering):
   F_pre(q) = window(q) * [beta_T*h_T(q) + beta_D*h_D(q)]
 with the window centered on the pre-trial fixation (display center)
-and the traces painted at the six item slots. Simulated design
-(Wang & Theeuwes): the singleton appears at ONE high-probability
-slot (red outline, top) on 65% of singleton-present trials (70%
-present); the TARGET is always uniform - W&T bias only the
-distractor location. 60 biased trials, then 30 unbiased to show
-decay.
+and the traces painted at the six item slots. Simulated design: a
+generic biased-distractor-location sequence on THIS task's displays
+- the singleton appears at one high-probability slot (red outline,
+top) on 65% of singleton-present trials (70% present), the target
+is always uniform. 60 biased trials, then 30 unbiased to show
+decay. (This illustrates the trace mechanism; it is not a
+reproduction of Wang & Theeuwes - see RESULTS.)
 Weights are the fitted history-inside values (weights_final.json).
 
 Output: figures/prior_evolution.png
@@ -154,10 +155,10 @@ def main():
     cax = fig.add_axes([0.965, 0.42, 0.011, 0.46])
     cb = fig.colorbar(im, cax=cax)
     cb.set_label("expected prior (symmetric scale)", fontsize=8)
-    fig.suptitle("Pre-onset spatial prior F_pre = window x history, "
-                 "W&T-style HP-location manipulation on this task "
-                 "(maps: expected over sequences; curves: one example "
-                 "sequence)", fontsize=12)
+    fig.suptitle("Pre-onset spatial prior F_pre = window x history under "
+                 "a biased distractor-location sequence (maps: expected "
+                 "over sequences; curves: one example sequence)",
+                 fontsize=12)
     import os
     os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/prior_evolution.png", dpi=130)

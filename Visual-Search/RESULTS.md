@@ -731,8 +731,11 @@ paradigm would need the salience channel reinstated plus a
 local-uniqueness shape-contrast channel; until then the safe claims
 from this battery are qualitative and trace-borne: reduced capture
 at the HP location, a target cost there, and the recorded failure
-(flat rather than graded spillover to neighboring locations). Code
-and figure labels now say "W&T-style manipulation on this task."
+(flat rather than graded spillover to neighboring locations). Decision
+(Han): even the transplant is misleading - the wang() battery is
+REMOVED from reproduce.py; the prior-evolution figure remains as an
+illustration of the trace mechanism under a generic biased-location
+sequence, with the W&T attribution dropped.
 
 ## Caveats on record
 

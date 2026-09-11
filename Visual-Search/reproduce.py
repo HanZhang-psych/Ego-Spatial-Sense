@@ -1,22 +1,16 @@
-"""Reproduction batteries for the final model (no refitting).
+"""Reproduction battery for the final model (no refitting).
 
-  python reproduce.py            # both batteries
-  python reproduce.py --which gaspelin
-  python reproduce.py --which wang
+  python reproduce.py
 
-Gaspelin battery (held-out subjects, first saccades - the model's
-scope): oculomotor suppression, intertrial location priming.
-HP-location battery: Wang & Theeuwes' STATISTICAL MANIPULATION (a
-65% predictable distractor location) transplanted onto THIS task's
-displays and task set. It tests only the location-learning traces -
-the component the paradigms share. It is not a simulation of their
-additional-singleton task: their target is defined by shape
-UNIQUENESS (no fixed template) and their capture is bottom-up
-salience, neither of which this model represents (the salience
-channel was dropped for minimality; see RESULTS).
+Held-out subjects, first saccades (the model's scope): oculomotor
+suppression and intertrial location priming. A former W&T-style
+HP-location battery was removed: the additional-singleton paradigm
+(shape-singleton target, bottom-up salience capture) is outside what
+this feature-search model represents, and transplanting only the
+statistical manipulation onto our displays was judged misleading
+(see RESULTS, "The Wang & Theeuwes battery is a transplant").
 """
 
-import argparse
 import json
 
 import numpy as np
@@ -25,7 +19,6 @@ import torch
 
 import data
 from build_contexts import NBINS, MAXR
-from front_end import item_positions
 from model import load_final, color_angles
 
 RADII = torch.linspace(0.09, MAXR, NBINS)
@@ -103,89 +96,8 @@ def gaspelin(m):
         print(f"{name}: obs {os_:5.1f}%  model {ms:5.1f}%  (paper: 5 vs 10)")
 
 
-def wang(m, runs=400, trials=400, hp=0):
-    sacc, _ = data.load_frames()
-    ctx = np.load("dataset/contexts_v21.npz")
-    P = torch.tensor(ctx["P"])
-    FORM = torch.tensor(ctx["FORM"])
-    sub = sacc[(sacc.setsize == 6) & (sacc.fixloc == 0)
-               & (sacc.targCol == "green")
-               & (sacc.singCol.isin(["red", "none"]))]
-    keys = sub[["targLoc", "singLoc", "ctx"]].drop_duplicates()
-    from build_contexts import template_axis
-    uT, uS = template_axis("green"), template_axis("red")
-    cphi = uT[0]*uS[0] + uT[1]*uS[1]
-    sphi = -uT[1]*uS[0] + uT[0]*uS[1]
-    lut = {}
-    with torch.no_grad():
-        win = torch.sigmoid(m.k * (m.r0 - RADII))
-        wi = torch.sigmoid(m.k * (m.r0 - 0.5)).item()
-        for _, r in keys.iterrows():
-            ci = int(r.ctx)
-            has_sing = int(r.singLoc) > 0
-            dproj = ((cphi * P[ci, :, :, 0] + sphi * P[ci, :, :, 1])
-                     if has_sing else 0.0)
-            mix = m.a * P[ci, :, :, 0] - m.b * dproj
-            lut[(int(r.targLoc), int(r.singLoc))] = \
-                (mix * win).sum(-1) + wi * m.g_form * FORM[ci]
-    etaT, etaD = m.eta_T.item(), m.eta_D.item()
-    bT, bD = m.beta_T.item(), m.beta_D.item()
-    rng = np.random.default_rng(1)
-    acc = dict(cap_hp=[0, 0], cap_lp=[0, 0], targ_hp=[0, 0], targ_lp=[0, 0])
-    dist_acc = {1: [0, 0], 2: [0, 0], 3: [0, 0]}
-    for _ in range(runs):
-        hT = np.zeros(6)
-        hD = np.zeros(6)
-        for t in range(trials):
-            present = rng.random() < 0.70
-            sing = ((hp if rng.random() < 0.65 else
-                     int(rng.choice([j for j in range(6) if j != hp]))) + 1
-                    if present else 0)
-            targ = int(rng.choice([j + 1 for j in range(6) if j + 1 != sing]))
-            if (targ, sing) in lut and t >= 100:
-                F = lut[(targ, sing)] + wi * (bT * torch.tensor(hT)
-                                              + bD * torch.tensor(hD))
-                p = torch.softmax(F, 0).numpy()
-                if present:
-                    key = "cap_hp" if sing - 1 == hp else "cap_lp"
-                    acc[key][0] += p[sing - 1]
-                    acc[key][1] += 1
-                    if sing - 1 != hp:
-                        dd = min(abs(sing - 1 - hp), 6 - abs(sing - 1 - hp))
-                        dist_acc[dd][0] += p[sing - 1]
-                        dist_acc[dd][1] += 1
-                key = "targ_hp" if targ - 1 == hp else "targ_lp"
-                acc[key][0] += p[targ - 1]
-                acc[key][1] += 1
-            hT *= (1 - etaT)
-            hT[targ - 1] += etaT
-            eD = np.zeros(6)
-            if sing > 0:
-                eD[sing - 1] = 1.0
-            hD = (1 - etaD) * hD + etaD * eD
-    r = {k: 100 * v[0] / max(v[1], 1) for k, v in acc.items()}
-    print("== HP-distractor-location battery "
-          "(W&T's manipulation on this task's displays) ==")
-    print(f"capture at HP location: {r['cap_hp']:.2f}%   at LP: {r['cap_lp']:.2f}%")
-    print(f"target found at HP: {r['targ_hp']:.2f}%   elsewhere: {r['targ_lp']:.2f}%")
-    for dd in (1, 2, 3):
-        v = dist_acc[dd]
-        print(f"LP capture at ring distance {dd} from HP: "
-              f"{100*v[0]/max(v[1],1):.2f}%")
-    print("(slot traces predict a FLAT gradient; W&T observed spillover)")
-
-
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--which", default="both",
-                    choices=["both", "gaspelin", "wang"])
-    args = ap.parse_args()
-    m = load_final()
-    if args.which in ("both", "gaspelin"):
-        gaspelin(m)
-        print()
-    if args.which in ("both", "wang"):
-        wang(m)
+    gaspelin(load_final())
 
 
 if __name__ == "__main__":
