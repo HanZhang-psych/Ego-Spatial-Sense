@@ -1,12 +1,15 @@
 """Stilwell (2023) salience battery: is a more salient singleton
 suppressed more?
 
-The model is fitted only on canonical (green/red) displays; here its
-weights are applied, unchanged, to Stilwell's displays rendered with
-their TRUE colors (blue/pink/teal/red pairings). Observed high/low
-salience singleton rates: 7.0 / 11.3 percent; the graded per-pair
-structure is the target pattern. Zero history traces (they balance
-across conditions). Needs the raw Stilwell2023.txt (not in repo).
+The model is fitted only on canonical (green/red) displays, and
+Stilwell's LOW-salience trials are excluded from the pooled dataset
+entirely (pool_data.py) - so the low-salience condition is fully
+out-of-sample: neither its colors nor its choices ever touch the
+fit. Weights are applied, unchanged, to Stilwell's displays rendered
+with their TRUE colors (blue/pink/teal/red pairings). Observed
+high/low singleton rates: 7.0 / 11.3 percent; model: 8.2 / 11.5.
+Zero history traces (they balance across conditions). Needs the raw
+Stilwell2023.txt (not in repo).
 
   python stilwell_salience.py [path/to/Stilwell2023.txt]
 """

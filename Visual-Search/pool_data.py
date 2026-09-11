@@ -63,6 +63,17 @@ def load_study(path):
                   f"(types: {', '.join(kinds)})")
         df = df[ok].copy()
         df["color_sing"] = df.singType.eq("sing")
+        if "singSal" in df.columns:
+            # Stilwell varied singleton salience; the canonical
+            # reconstruction (salient red-on-green) only matches the
+            # high-salience displays, so low-salience singleton
+            # trials are excluded (absent trials are kept)
+            low = df.color_sing & df.singSal.eq("low")
+            if low.any():
+                n_tr = df[low].groupby(
+                    ["subjNum", "block", "trial"]).ngroups
+                print(f"  excluded {n_tr} low-salience singleton trials")
+                df = df[~low].copy()
     else:
         df = df.copy()
         df["color_sing"] = df.singPres.eq("P")

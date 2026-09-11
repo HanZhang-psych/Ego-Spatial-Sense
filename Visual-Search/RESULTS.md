@@ -699,6 +699,21 @@ not Stilwell's calibrated coordinates; the small teal counterbalance
 cells (n~270) carry a high/low label the model cannot distinguish
 (same color pair) and are missed.
 
+**Tightened (Han's catch):** the first version of this test was not
+fully out-of-sample - Stilwell's low-salience trials sat in the
+training pool (canonicalized to red/green), so their weaker
+suppression could have leaked into the gains. Fix: pool_data.py now
+EXCLUDES Stilwell low-salience singleton trials from the dataset
+(the canonical salient-red reconstruction only matches the
+high-salience displays anyway); 124,834 -> 114,232 first saccades,
+refit test NLL 1.39892 (new dataset - not comparable to 1.38547),
+weights essentially unchanged (b 0.196, g_form 0.76), all other
+reproductions intact. The battery rerun with the clean weights:
+high 8.2% (obs 7.0), low 11.5% (obs 11.3) - the low-salience
+condition is now predicted by a model that never saw it in any
+form, colors or choices. The earlier oracle/ceiling benchmarks and
+ablation prices in this ledger refer to the pre-exclusion dataset.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
