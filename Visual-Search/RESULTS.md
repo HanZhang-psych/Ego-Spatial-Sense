@@ -575,6 +575,19 @@ result is that test at window granularity, and the data reject it.
 
 ## Caveats on record
 
+- **Window anchoring: display-relative vs fixed-size - untestable
+  here, tested anyway (Han's question).** Distances are normalized by
+  each study's own empirically measured ring radius (median landing
+  positions; spread across studies 190-237 px, i.e. about +/-11%),
+  which implicitly assumes the attention window scales with display
+  eccentricity. Refitting with distances re-expressed in a common
+  screen frame (each study scaled by its radius over the grand mean)
+  - a fixed-size window - gives held-out NLL 1.23814 vs 1.23764
+  ring-relative: a tie (~21 total), parameters unmoved (r0 0.60 vs
+  0.59). An 11% eccentricity spread cannot separate the two
+  anchorings; deciding this needs designs varying eccentricity
+  severalfold. The ring-relative convention stands, now as a recorded
+  choice rather than a silent one.
 - **The envelope's width is combination-rule-conditional** (see the ⊗
   section above); statements about the attention window from these
   fits must name the rule they assume.
