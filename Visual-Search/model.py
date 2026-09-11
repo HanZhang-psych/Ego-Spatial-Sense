@@ -4,10 +4,16 @@ Stimulus terms, all computed from the color-contrast maps:
 
   mix(x) = a * (target-color contrast at x)
          - b * (distractor-color contrast at x)
-  stim_i = sum over ray bins of  sigmoid(k*(r0 - r)) * relu(mix)
-         + g_form * FORM_i
-  F_i    = stim_i + sigmoid(k*(r0 - dist_i)) * (beta_T*hT_i + beta_D*hD_i
-                                                + g_I*visited_i)
+  F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * relu(mix)
+      + g_form*FORM_i
+      + sigmoid(k*(r0 - dist_i)) * ( beta_T*hT_i + beta_D*hD_i
+                                     + g_I*visited_i )
+
+  The window gates the color evidence (bin-by-bin along the rays) and
+  the memory terms (at the item's distance) - but NOT shape: gating
+  shape was tested and rejected (~950 held-out NLL) - template-match
+  evidence behaves as if its window is effectively flat, pointing at
+  channel-specific windows.
 
 a = enhance the target color; b = suppress the distractor color (the
 two are nearly yoked within any single color-pair study - only their

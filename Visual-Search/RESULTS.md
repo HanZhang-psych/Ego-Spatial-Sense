@@ -485,6 +485,33 @@ twelve-weight version - the whole simplification cost ~33 total);
 suppression, priming, and W&T reproductions intact; notebook trains
 the identical form.
 
+## Window-gating of the shape term: tested, rejected, with a caveat
+
+Han's unified notation - window x [color + shape + memory] - exposed
+that the shape term entered ungated. Gating it was tested: held-out
+NLL 1.25597 vs 1.23328 ungated (~950 total, decisive; the fit even
+flattened the window trying to rescue it). Shape stays OUTSIDE the
+window:
+
+  F = window x [ relu(a*targetColor - b*distractorColor)
+                 + beta_T*h_T + beta_D*h_D + g_I*visited ] + g_form*shape
+
+Architecturally this converges with the agent, which never had one
+shared window (the obstacle channel runs through the per-ray
+envelope; the goal channel has its OWN learned distance gain): in
+both instantiations the seek/template channel's distance profile is
+separate from the scan channel's, and effectively far-reaching.
+
+**Caveat (Han):** FORM is the analytic label channel - it marks the
+template-shape item using task knowledge, not pixels - and a label
+trivially ignores eccentricity. The ~950 result therefore conflates
+"template guidance is window-free" (interesting) with "our shape
+channel is a label" (artifact). The clean test is a pixel-derived
+shape channel (template matching with the known shape kernel: still
+top-down in WHAT it looks for, bottom-up in the evidence), then
+re-running this fork. Until then, the safe claim is: template
+evidence, however delivered, fits best un-gated in these data.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

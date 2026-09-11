@@ -12,11 +12,14 @@ action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 
 **Final model of record (search side), one sentence:** one priority
 map assembled from minimal goal-weighted evidence — a·(target-color
-contrast) − b·(distractor-color contrast), rectified — plus the
-template-shape term, with the two world-anchored leaky location
-traces and within-trial IoR written in signed, everything read
-through a fixed ego-anchored sigmoid attention window and resolved by
-softmax; ten fitted weights. Every structural choice (traces, IoR,
+contrast) − b·(distractor-color contrast), rectified — with the two
+world-anchored leaky location traces and within-trial IoR written in
+signed, read through a fixed ego-anchored sigmoid attention window;
+the template-shape term joins OUTSIDE the window (gating it is
+rejected at ~950 held-out NLL — channel-specific distance profiles,
+converging with the agent, whose goal channel likewise has its own
+distance gain; caveat: the shape channel is the analytic label, see
+RESULTS); softmax readout; ten fitted weights. Every structural choice (traces, IoR,
 goal-early assembly, window form, history ordering, the dropped
 presence and salience channels, the kept shape term, the
 rectification placement) was decided or priced by held-out
