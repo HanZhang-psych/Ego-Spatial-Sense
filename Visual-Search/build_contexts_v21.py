@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 from build_contexts import (COLORS, item_positions, normalize_colors)
-from front_end import ECC, IMG, _gauss_blur, form_map, render
+from front_end import ECC, IMG, _gauss_blur, form_map, render, shape_for
 
 NBINS = 24
 NRAYS = 90
@@ -116,8 +116,7 @@ def main():
             items = [dict(x=pos[j][0], y=pos[j][1],
                           color=(singCol if (j + 1) == singLoc
                                  and singCol != "none" else targCol),
-                          shape=("diamond" if (j + 1) == targLoc
-                                 else "circle"))
+                          shape=shape_for(j + 1, targLoc))
                      for j in range(setsize)]
             img = render(items)
             cache[dk] = (opponency_contrast(img), form_map(items),
