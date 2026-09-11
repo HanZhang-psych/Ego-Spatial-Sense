@@ -353,7 +353,7 @@ if __name__ == "__main__":
 
         # Load the model
         print("Loading ES2 model...")
-        model.load_state_dict(torch.load(args.model_path))
+        model.load_state_dict(torch.load(args.model_path, map_location=args.device))
         model.eval()
 
     elif "mlp" in args.model_path:
@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
         # Load the model
         print("Loading MLP model...")
-        model.load_state_dict(torch.load(args.model_path))
+        model.load_state_dict(torch.load(args.model_path, map_location=args.device))
         model.eval()
 
     elif "transformer" in args.model_path:
@@ -382,7 +382,7 @@ if __name__ == "__main__":
 
         # Load the model
         print("Loading Transformer model...")
-        model.load_state_dict(torch.load(args.model_path))
+        model.load_state_dict(torch.load(args.model_path, map_location=args.device))
         model.eval()
 
     else:

@@ -2,3 +2,7 @@ __pycache__
 
 raycast/
 sense/
+MetaDrive-Driving/
+.DS_Store
+Ego_Spatial_Sense.pdf
+search_data/

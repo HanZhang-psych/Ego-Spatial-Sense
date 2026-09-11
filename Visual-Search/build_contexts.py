@@ -4,7 +4,8 @@ Reconstruction assumptions (licensed by the paradigm's inclusion
 criteria and per-trial targCol/singCol columns): items on an
 iso-eccentric ring; all items in the target color except the singleton,
 which is in the opposite color; the target is the template shape
-(diamond) among circles. Displays repeat massively, so the front-end
+(diamond) among HETEROGENEOUS nontarget shapes (feature search - the
+target is never a shape singleton, per the source studies' design). Displays repeat massively, so the front-end
 runs once per unique context (setsize, targLoc, singLoc, targCol,
 singCol, fixation) and every saccade looks its context up.
 
@@ -26,7 +27,8 @@ dataset/saccades_ctx.csv.
 import numpy as np
 import pandas as pd
 
-from front_end import COLORS, ECC, IMG, _gauss_blur, form_map, render, ray_scan
+from front_end import (COLORS, ECC, IMG, _gauss_blur, form_map,
+                       render, ray_scan, shape_for)
 
 OPPONENT = {"green": "red", "red": "green", "blue": "orange",
             "orange": "blue", "pink": "teal", "teal": "pink"}
@@ -89,8 +91,8 @@ def build_context(setsize, targLoc, singLoc, targCol, singCol):
     items = []
     for j in range(setsize):
         color = singCol if (j + 1) == singLoc and singCol != "none" else targCol
-        shape = "diamond" if (j + 1) == targLoc else "circle"
-        items.append(dict(x=pos[j][0], y=pos[j][1], color=color, shape=shape))
+        items.append(dict(x=pos[j][0], y=pos[j][1], color=color,
+                          shape=shape_for(j + 1, targLoc)))
     img = render(items)
     maps = color_similarity_maps(
         img, COLORS.get(targCol),
