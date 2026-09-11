@@ -892,6 +892,25 @@ sigma = 0.09; 1.39920 per-item), with readable parameters (beta_T
 gradient ordered). Normalization makes sigma control spread only,
 not weight; the notebook's paint_slots mirrors it.
 
+## Excluding Hamblin_2022 (set size 4): a dead tie (Han's question)
+
+Question: does the fit improve if the one set-size-4 study
+(Hamblin_2022, 10,854 saccades) is dropped from training? Refit with
+the identical recipe and subject split (600 epochs, seed 0),
+training mask minus all Hamblin saccades; compared on the IDENTICAL
+held-out set-size-6 trials (pooled NLL is not comparable across set
+sizes - chance is ln 4 = 1.386 for Hamblin vs ln 6 = 1.792).
+
+Result: no. Held-out set-size-6 NLL 1.41487 with Hamblin vs 1.41489
+without - a tie to four decimals; parameters essentially unmoved
+(g_T 0.302 -> 0.315, beta_T 4.62 -> 4.60, etas 0.60/0.16 both
+ways). The flip side is the keeper: the no-Hamblin refit, which
+never saw a set-size-4 trial, scores 1.16650 on the held-out
+Hamblin trials vs 1.16355 for the model trained on them - the
+set-size-6 studies alone predict the set-size-4 study almost
+perfectly out-of-sample. Hamblin stays in the pool: it costs
+nothing and the same nine parameters transfer across set size.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
