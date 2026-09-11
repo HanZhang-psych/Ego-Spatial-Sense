@@ -351,20 +351,16 @@ first saccades, learned regime:
 2. **Impaired target selection at the HP location**: 46.0% vs 50.1%
    elsewhere — reproduced, from the same trace value (source-blind
    spillover).
-3. **Spatial gradient around the HP location**: model is FLAT (6.66 /
-   6.76 / 6.41 at ring distances 1/2/3) where W&T observed graded
-   spillover to neighbors — a committed divergence: the fitted traces
-   are slot-indexed with no spatial spread. The missing ingredient is
-   the trace kernel width sigma_h — exactly the component the
-   agent-side experiments already identified and implemented (the
-   spread-matched trace), specified in the model doc but not yet in
-   the search fits. The same parameter fixes the same limitation in
-   both domains.
+(A third item here formerly claimed the model's flat spatial
+gradient around the HP location as a committed divergence from
+W&T's observed spillover to neighbors; removed with the W&T battery
+- see "The Wang & Theeuwes battery is a transplant" below. The
+slot-indexed traces' lack of spatial spread stands on its own as an
+architectural fact.)
 
 Framing caveat: W&T ran a capture regime (singleton-detection mode);
 our weights come from suppression paradigms, so absolute capture
-levels are not comparable — the reproduced content is the location
-modulation, its spillover to targets, and (negatively) the gradient.
+levels are not comparable.
 
 ## Trace spread sigma_h (fit_sigma.py; results_fit_sigma.json)
 
@@ -375,10 +371,8 @@ held-out NLL identical to the null (1.22797 both; r0 refit jointly to
 0.55, marginally improving on the earlier 1.22833). Conclusion: **no
 measurable trace spread in roving-location designs** — neighbor
 repeats are rare and unstructured, so the kernel has no variance to
-bite on. The Wang & Theeuwes gradient divergence therefore stands as
-a prediction about *biased* designs specifically: sigma_h is
-measurable only where location statistics concentrate mass, which is
-exactly where W&T observed the gradient and where the agent-side
+bite on. sigma_h is measurable only where location statistics
+concentrate mass - biased designs - which is where the agent-side
 spread trace earned its keep. A biased-design human fit is the
 experiment that would estimate it.
 
@@ -670,7 +664,7 @@ hit the target only ~71%), and the model's residual misses in the
 battery are small distortions (suppression 8.5 vs 7.0, priming
 slightly compressed), not absent phenomena. Estimated reachable
 ceiling for a subject-held-out model: roughly 1.30-1.35, via
-per-study gains, spatially spreading traces (the W&T gradient), or
+per-study gains, spatially spreading traces, or
 richer history kernels; the remaining ~1.3 nats look like genuine
 first-saccade stochasticity.
 
@@ -728,10 +722,9 @@ heterogeneity computation, not a fixed template - g_form does not
 apply in kind), and their capture is bottom-up salience - exactly
 the w_S channel dropped for minimality. Modeling W&T's actual
 paradigm would need the salience channel reinstated plus a
-local-uniqueness shape-contrast channel; until then the safe claims
-from this battery are qualitative and trace-borne: reduced capture
-at the HP location, a target cost there, and the recorded failure
-(flat rather than graded spillover to neighboring locations). Decision
+local-uniqueness shape-contrast channel; until then the claims this battery made were qualitative and
+trace-borne: reduced capture at the HP location and a target cost
+there. Decision
 (Han): even the transplant is misleading - the wang() battery is
 REMOVED from reproduce.py; the prior-evolution figure remains as an
 illustration of the trace mechanism under a generic biased-location
