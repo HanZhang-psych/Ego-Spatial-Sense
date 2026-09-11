@@ -53,6 +53,7 @@ def main():
     hD = np.zeros(S)
     snaps = {}
     series_T, series_S = [], []
+    ev_T, ev_S = [], []           # actual per-trial locations
     snap_at = [0, 10, 30, 60, 90]
     for t in range(91):
         if t in snap_at:
@@ -70,6 +71,8 @@ def main():
             sing = -1
         while targ == sing:
             targ = int(rng.choice(S))
+        ev_T.append(targ)
+        ev_S.append(sing)
         hT = (1 - ETA_T) * hT
         hT[targ] += ETA_T
         eD = np.zeros(S)
@@ -106,6 +109,26 @@ def main():
              label="prior at target-biased slot (window-weighted)")
     axc.plot(series_S, color="#aa2222",
              label="prior at singleton-biased slot (window-weighted)")
+    # event rugs: where the target / singleton ACTUALLY appeared each
+    # trial (filled = at the biased slot, faint tick = elsewhere,
+    # nothing = singleton absent)
+    tt_ = np.arange(len(ev_T))
+    tb = np.array([e == T_LOC for e in ev_T])
+    sb = np.array([e == S_LOC for e in ev_S])
+    sp_ = np.array([e >= 0 for e in ev_S])
+    yT, yS = -0.62, -0.80
+    axc.scatter(tt_[tb], np.full(tb.sum(), yT), marker="|", s=48,
+                color="#118844", lw=1.6,
+                label="trial's target at the biased slot")
+    axc.scatter(tt_[~tb], np.full((~tb).sum(), yT), marker="|", s=20,
+                color="#bbccbb", lw=1.0)
+    axc.scatter(tt_[sb], np.full(sb.sum(), yS), marker="|", s=48,
+                color="#aa2222", lw=1.6,
+                label="trial's singleton at the biased slot")
+    axc.scatter(tt_[sp_ & ~sb], np.full((sp_ & ~sb).sum(), yS),
+                marker="|", s=20, color="#ddbbbb", lw=1.0,
+                label="elsewhere (faint; absent: no tick)")
+    axc.set_ylim(-0.95, None)
     axc.axhline(0, color="#999999", lw=0.8)
     axc.axvline(60, color="#555555", ls=":", lw=1)
     axc.text(61, axc.get_ylim()[1] * 0.75, "bias removed", fontsize=9)
