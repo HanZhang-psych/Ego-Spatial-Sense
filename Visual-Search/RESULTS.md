@@ -714,6 +714,26 @@ condition is now predicted by a model that never saw it in any
 form, colors or choices. The earlier oracle/ceiling benchmarks and
 ablation prices in this ledger refer to the pre-exclusion dataset.
 
+## The "Wang & Theeuwes" battery is a transplant, not a simulation
+(Han's challenge)
+
+The wang() battery applies W&T's STATISTICAL manipulation - a 65%
+predictable distractor location - to THIS task's displays and task
+set, and tests only the location-learning traces, the one component
+the paradigms plausibly share (traces live over slots, not
+features). It is not a simulation of the additional-singleton task
+itself, and the model as constituted cannot represent that task:
+their target is defined by shape UNIQUENESS (a local-contrast /
+heterogeneity computation, not a fixed template - g_form does not
+apply in kind), and their capture is bottom-up salience - exactly
+the w_S channel dropped for minimality. Modeling W&T's actual
+paradigm would need the salience channel reinstated plus a
+local-uniqueness shape-contrast channel; until then the safe claims
+from this battery are qualitative and trace-borne: reduced capture
+at the HP location, a target cost there, and the recorded failure
+(flat rather than graded spillover to neighboring locations). Code
+and figure labels now say "W&T-style manipulation on this task."
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

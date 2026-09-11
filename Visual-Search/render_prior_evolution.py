@@ -154,9 +154,10 @@ def main():
     cax = fig.add_axes([0.965, 0.42, 0.011, 0.46])
     cb = fig.colorbar(im, cax=cax)
     cb.set_label("expected prior (symmetric scale)", fontsize=8)
-    fig.suptitle("Pre-onset spatial prior F_pre = window x history, W&T "
-                 "HP-distractor design (maps: expected over sequences; "
-                 "curves: one example sequence)", fontsize=12)
+    fig.suptitle("Pre-onset spatial prior F_pre = window x history, "
+                 "W&T-style HP-location manipulation on this task "
+                 "(maps: expected over sequences; curves: one example "
+                 "sequence)", fontsize=12)
     import os
     os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/prior_evolution.png", dpi=130)

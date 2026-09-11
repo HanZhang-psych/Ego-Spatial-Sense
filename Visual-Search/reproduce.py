@@ -6,8 +6,14 @@
 
 Gaspelin battery (held-out subjects, first saccades - the model's
 scope): oculomotor suppression, intertrial location priming.
-Wang & Theeuwes: high-probability distractor-location simulation
-(capture reduction at the HP location, target cost there, gradient).
+HP-location battery: Wang & Theeuwes' STATISTICAL MANIPULATION (a
+65% predictable distractor location) transplanted onto THIS task's
+displays and task set. It tests only the location-learning traces -
+the component the paradigms share. It is not a simulation of their
+additional-singleton task: their target is defined by shape
+UNIQUENESS (no fixed template) and their capture is bottom-up
+salience, neither of which this model represents (the salience
+channel was dropped for minimality; see RESULTS).
 """
 
 import argparse
@@ -158,7 +164,8 @@ def wang(m, runs=400, trials=400, hp=0):
                 eD[sing - 1] = 1.0
             hD = (1 - etaD) * hD + etaD * eD
     r = {k: 100 * v[0] / max(v[1], 1) for k, v in acc.items()}
-    print("== Wang & Theeuwes HP-distractor-location simulation ==")
+    print("== HP-distractor-location battery "
+          "(W&T's manipulation on this task's displays) ==")
     print(f"capture at HP location: {r['cap_hp']:.2f}%   at LP: {r['cap_lp']:.2f}%")
     print(f"target found at HP: {r['targ_hp']:.2f}%   elsewhere: {r['targ_lp']:.2f}%")
     for dd in (1, 2, 3):
