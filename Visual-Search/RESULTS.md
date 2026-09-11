@@ -850,6 +850,26 @@ salience gradient arises from partial g_T enhancement of
 near-target colors; and r0 fits beyond the display (1.47), the
 window going fully flat - the scope note made parametric.
 
+## Readout comparison: softmax vs winner-take-all (Han's request)
+
+Same trained priority field; only the readout differs. The softmax
+fit already contains the optimal readout sharpness (the gains carry
+a free overall scale = the softmax temperature), so the discrete
+competitor is WTA plus a lapse: pick the field's argmax, with
+probability epsilon spread evenly over the items (pure WTA has
+infinite NLL on any miss; epsilon fitted on training data).
+
+  chance                           1.75229
+  WTA + lapse (epsilon = 0.669)    1.55034
+  softmax                          1.39368   (~3,640 total better)
+
+Two readings: (1) WTA needs a 67% lapse rate to survive - first
+saccades are far from deterministic maximization; (2) WTA recovers
+only ~56% of the chance-to-softmax gap - the rest is carried by the
+GRADED priorities below the winner (the second-best item draws more
+saccades than the third-best), which softmax uses and argmax
+discards.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
