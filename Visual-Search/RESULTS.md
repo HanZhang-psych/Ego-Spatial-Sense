@@ -730,6 +730,32 @@ REMOVED from reproduce.py; the prior-evolution figure remains as an
 illustration of the trace mechanism under a generic biased-location
 sequence, with the W&T attribution dropped.
 
+## Scope audit after the W&T removal: priming and Stilwell survive
+(Han's question)
+
+The same test that removed the W&T battery - does the paradigm match
+what the model's task set can represent - applied to the remaining
+claims:
+
+- **Intertrial location priming: in-paradigm.** The reference
+  numbers (73.3/36.6 target, 4.6/10.1 singleton) are the source
+  pooled-data paper's own analysis of these same trials; observed
+  values are recomputed from held-out subjects (71.1/35.2, matching);
+  the model is evaluated on the paradigm it was fitted to. No task
+  boundary is crossed.
+- **Stilwell salience: in-paradigm, verified from the raw data.**
+  Target color is fixed per subject (task-set a representable);
+  salience is BLOCKED (subject 1: blocks 1-6 low, 7-12 high), so the
+  singleton color is predictable within a block (task-set b
+  representable); the displays are the same feature-search family
+  (known target shape among heterogeneous nontargets - g_form
+  applies in kind). The battery's generalization is across stimulus
+  colors within a representable task, with the color-pair geometry
+  computed from the display and only scalar gains carried over.
+  Standing caveats unchanged: assumed RGBs (not Stilwell's
+  calibrated coordinates) and the unexplainable teal
+  counterbalance cells.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
