@@ -756,6 +756,28 @@ claims:
   calibrated coordinates) and the unexplainable teal
   counterbalance cells.
 
+## Within-session learning trajectory: a named structural residual
+
+Han asked whether the model reproduces the capture-to-suppression
+trajectory (early positive capture declining into suppression over
+~20 trials, as in the Gaspelin-lab session figure). Recomputed on
+held-out subjects (capture_by_trial.py, singleton minus plain-item
+baseline): the observed effect starts weakly negative (-2.7 over
+trials 1-10; no positive lobe with this baseline definition) and
+DEEPENS to -7.4 by trials 60+. The model is FLAT at ~-4.6: right
+average depth, no dynamics. Both halves are structural: the static
+task-set gains suppress fully from trial 1 (nothing learns to
+suppress), and h_D - the only learning mechanism - cancels out of
+this contrast in roving designs (it builds equally at all slots).
+Reproducing the trajectory would need the dropped w_S salience
+channel (initial capture) plus within-session GAIN learning (b
+growing to asymptote) - "learning to ignore is gain adjustment," as
+the agent-side theory already states; this model fits the
+post-learning asymptote. Note: the published figure's early
+positive lobe may also reflect a different baseline (singleton-
+absent trials) or a specific naive-subject experiment; our pooled
+recomputation with the plain-item baseline shows no positive phase.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
