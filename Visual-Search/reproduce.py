@@ -121,7 +121,7 @@ def wang(m, runs=400, trials=400, hp=0):
                      if has_sing else 0.0)
             mix = m.a * P[ci, :, :, 0] - m.b * dproj
             lut[(int(r.targLoc), int(r.singLoc))] = \
-                (torch.relu(mix) * win).sum(-1) + wi * m.g_form * FORM[ci]
+                (mix * win).sum(-1) + wi * m.g_form * FORM[ci]
     etaT, etaD = m.eta_T.item(), m.eta_D.item()
     bT, bD = m.beta_T.item(), m.beta_D.item()
     rng = np.random.default_rng(1)

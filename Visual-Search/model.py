@@ -5,9 +5,16 @@ from central fixation. Every term is gated by the attention window:
 
   mix(x) = a * (target-color contrast at x)
          - b * (distractor-color contrast at x)
-  F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * relu(mix)
+  F_i = sum over ray bins of  sigmoid(k*(r0 - r)) * mix
       + sigmoid(k*(r0 - dist_i)) * ( g_form*FORM_i
                                      + beta_T*hT_i + beta_D*hD_i )
+
+The color drive is SIGNED - no rectification. All three placements
+were priced on first fixations (linear 1.38547, rectify-first
+1.38594, rectify-after 1.38849, monotone in rectification strength)
+and the linear field also reproduces the below-baseline singleton
+suppression best: the data side with active suppression over
+relegation here.
 
 From central fixation all ring items are equidistant, so the window
 is flat across items and acts as a shared gain - it does no selective
@@ -84,22 +91,15 @@ class SearchModel(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, P, FORM, dist, hT, hD, radii, cphi, sphi,
-              rect="after"):
+    def field(self, P, FORM, dist, hT, hD, radii, cphi, sphi):
         """cphi/sphi: per-observation cosine/sine of the angle between
         the distractor color and the target color in opponency space
-        (0 on singleton-absent trials). rect: "after" rectifies the
-        goal-weighted sum (suppression saturates at zero - relegation);
-        "before" rectifies the color-tuned channels first and applies
-        the signed gains to them (feature-level suppression can go
-        below zero)."""
+        (0 on singleton-absent trials). The color drive is signed:
+        the distractor term can push priority below baseline."""
         d_proj = (cphi[:, None, None] * P[..., 0]
                   + sphi[:, None, None] * P[..., 1])
         win_ray = torch.sigmoid(self.k * (self.r0 - radii))
-        if rect == "before":
-            drive = self.a * torch.relu(P[..., 0]) - self.b * torch.relu(d_proj)
-        else:
-            drive = torch.relu(self.a * P[..., 0] - self.b * d_proj)
+        drive = self.a * P[..., 0] - self.b * d_proj
         stim = (drive * win_ray).sum(-1)
         win_item = torch.sigmoid(self.k * (self.r0 - dist))
         return stim + win_item * (

@@ -611,10 +611,19 @@ Fits (124,834 first saccades; same subject split):
   (a = -0.116, b = +0.078): that combination is the one whose relu
   clips the RED item - the fit spends color where it has unique
   work (relegation) and leaves target-attraction to shape.
-- rectify_first: 1.38594 - the rectification fork, a tie in the
-  all-saccade model, now leans slightly toward rectify-first (~62
-  total). Rectify-after is kept as the convention; the fork is
-  recorded as open and leaning.
+- rectify_first: 1.38594; no relu at all: 1.38547. Fork RESOLVED
+  (Han's question "did we try no relu?"): held-out NLL is monotone
+  in rectification strength (rectify-after 1.38849 > rectify-first
+  1.38594 > linear 1.38547), and the linear field also reproduces
+  suppression best - singleton 8.5% vs plain 12.7% (rectify-after:
+  10.2 vs 12.4; observed: 7.0 vs 13.6) - because the signed -b term
+  can push the red item BELOW baseline instead of saturating at
+  zero. The relu is dropped from the model of record: the field is
+  fully linear before the softmax. Interpretively this is a
+  reversal: the data side with ACTIVE SUPPRESSION below baseline
+  over relegation, at least at the first saccade. The fitted b also
+  becomes cleanly positive again (0.185), ending the ridge
+  weirdness: signed suppression is what the color channel is for.
 
 Reproductions (held-out subjects): suppression present (model
 41.8 / 10.2 / 12.4 vs observed 40.3 / 7.0 / 13.6 - the singleton
