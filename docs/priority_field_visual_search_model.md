@@ -11,28 +11,16 @@ action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
 **Final model of record (search side), one sentence:** one priority
-map assembled from all three sources — goal-modified salience
-(template-rotated, rectified contrast computed from pixels), the two
-world-anchored leaky location traces, and within-trial IoR — read
-through a fixed, ego-anchored sigmoid attention window (ES2's form;
-fitted k=3.4, reach r0=0.49) and resolved by softmax. **Everything,
-memory included, expresses through the window** — the ordering was
-itself decided by held-out comparison (history-inside beat
-history-outside by ~540 NLL), overturning the earlier
-memory-bypasses-the-window commitment and matching the agent, whose
-runtime trace always injected through its distance-sensitive gain
-machinery. History modifies the map, never the window itself. Every
-structural choice (traces, IoR, goal-early assembly, window form,
-history ordering) was decided by held-out model comparison; fitted
-values and the comparison ledger are in `Visual-Search/RESULTS.md`.
-
-Paper structure this document serves: (1) a computational model of visual
-search — the signed priority field fitted to human saccade data; (2)
-the same model, re-instantiated, driving an autonomous agent in the
-reach-avoid task. The formulation below is written so that the transition
-between the two takes three sentences (§5).
-
----
+map assembled from minimal goal-weighted evidence — a·(target-color
+contrast) − b·(distractor-color contrast), rectified — plus the
+template-shape term, with the two world-anchored leaky location
+traces and within-trial IoR written in signed, everything read
+through a fixed ego-anchored sigmoid attention window and resolved by
+softmax; ten fitted weights. Every structural choice (traces, IoR,
+goal-early assembly, window form, history ordering, the dropped
+presence and salience channels, the kept shape term, the
+rectification placement) was decided or priced by held-out
+comparison; the ledger is `Visual-Search/RESULTS.md`.
 
 ## 1. Master equation
 

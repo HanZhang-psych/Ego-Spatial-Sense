@@ -19,7 +19,7 @@ import torch
 
 import data
 from front_end import shape_for  # noqa: F401  (kept: pipeline import check)
-from model import SearchModel
+from model import SearchModel, color_angles
 
 RADII = torch.linspace(0.09, 1.1, 24)
 
@@ -38,7 +38,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", default="final",
                     choices=["final", "no_traces", "no_ior", "sigma",
-                             "no_salience"])
+                             "no_shape", "rectify_first"])
     ap.add_argument("--epochs", type=int, default=300)
     args = ap.parse_args()
 
@@ -49,6 +49,7 @@ def main():
     P = torch.tensor(ctx["P"])[cid]
     FORM = torch.tensor(ctx["FORM"])[cid]
     train, test = data.subject_split(tt)
+    cphi, sphi = color_angles(sacc)
     print(f"{len(sacc)} saccades; train/test split by subject")
 
     dmat = None
@@ -61,11 +62,10 @@ def main():
 
     m = SearchModel()
     frozen = {"no_traces": ["beta_T", "beta_D", "raw_eta_T", "raw_eta_D", "g_I"],
-              "no_ior": ["g_I"]}.get(args.variant, [])
+              "no_ior": ["g_I"],
+              "no_shape": ["g_form"]}.get(args.variant, [])
     if args.variant != "sigma":
         frozen = frozen + ["raw_sigma"]
-    if args.variant == "no_salience":
-        frozen = frozen + ["w_S"]        # nested test of the salience gain
     with torch.no_grad():
         for n in frozen:
             if n != "raw_sigma":
@@ -82,7 +82,10 @@ def main():
     def nll(mask):
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], dmat)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII)
+        F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII,
+                    cphi, sphi,
+                    rect="before" if args.variant == "rectify_first"
+                    else "after")
         F = F.masked_fill(~tt["valid"], -1e9)
         lp = torch.log_softmax(F, 1).gather(1, tt["choice"][:, None]).squeeze(1)
         return -lp[mask].mean()

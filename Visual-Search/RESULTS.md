@@ -440,6 +440,51 @@ study the off-goal axis is one-signed, so g_O and w_S partially trade
 their per-study NET is the identified quantity, and separating them
 cleanly needs cross-color designs.
 
+## The minimal module (final form; run 2026-09-10)
+
+A minimalization pass (driven by Han) settled the perceptual module at
+two color terms plus shape:
+
+  F = window x relu( a*(target-color contrast) - b*(distractor-color
+      contrast) ) + g_form*shape + windowed( beta_T*h_T + beta_D*h_D
+      + g_I*visited )
+
+Ten weights. Decisions and their held-out prices (test NLL; noise
+floor ~7 total):
+
+- **(a, b) reparameterization** of the goal/off-goal gains: exactly
+  equivalent (two parameters of the same linear family, different
+  basis); adopted for interpretability - a = enhance target color,
+  b = suppress distractor color. Within a two-color study the pair is
+  nearly yoked; >=3-color displays separate them.
+- **Presence dropped** (-24 total): near-equal across items, hence
+  softmax-invisible; its channel had also been intensity-based and
+  artifact-prone before correction.
+- **w_S (odd-color salience) dropped** by design decision for
+  minimality (it had earned ~73 and part of the late-saccade
+  improvement; within a study it duplicates the b term). The
+  bottom-up-salience route is thereby out of the final model; the
+  novel-singleton-color transfer design is the experiment that would
+  force it back.
+- **Shape kept** (dropping it: test NLL 1.5153 vs 1.2333 - ~11,700
+  total, the largest effect in this ledger): shape is the target
+  template's only carrier; without it the model cannot prefer the
+  target over same-colored items.
+- **Rectification placement fork - a tie (~10 total)**: relu after
+  the goal weighting (suppression saturates at zero; relegation) vs
+  relu on the tuned channels before signed gains (feature suppression
+  can go below zero) fit identically; rectify-after kept as
+  convention, the fork recorded as empirically open here.
+- **b ~ 0 in the fitted model** (0.02): with two-color displays,
+  a*(target color) alone relegates the distractor (it scores negative
+  on the target axis and the relu clips it) - enhancement carries
+  suppression, now visible at the parameter level.
+
+Final ten-weight model: held-out NLL 1.23328 (vs 1.23249 for the
+twelve-weight version - the whole simplification cost ~33 total);
+suppression, priming, and W&T reproductions intact; notebook trains
+the identical form.
+
 ## Caveats on record
 
 - **The envelope's width is combination-rule-conditional** (see the ⊗

@@ -20,16 +20,18 @@ import torch
 import data
 from build_contexts import NBINS, MAXR
 from front_end import item_positions
-from model import load_final
+from model import load_final, color_angles
 
 RADII = torch.linspace(0.09, MAXR, NBINS)
 
 
 def model_probs(m, sacc, tt, P, FORM):
     with torch.no_grad():
+        cphi, sphi = color_angles(sacc)
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII)
+        F = m.field(P, FORM, tt["d"], tt["visited"], hT, hD, RADII,
+                    cphi, sphi)
         F = F.masked_fill(~tt["valid"], -1e9)
         return torch.softmax(F, 1)
 
@@ -114,13 +116,19 @@ def wang(m, runs=400, trials=400, hp=0):
                & (sacc.targCol == "green")
                & (sacc.singCol.isin(["red", "none"]))]
     keys = sub[["targLoc", "singLoc", "ctx"]].drop_duplicates()
+    from build_contexts import template_axis
+    uT, uS = template_axis("green"), template_axis("red")
+    cphi = uT[0]*uS[0] + uT[1]*uS[1]
+    sphi = -uT[1]*uS[0] + uT[0]*uS[1]
     lut = {}
     with torch.no_grad():
         win = torch.sigmoid(m.k * (m.r0 - RADII))
         for _, r in keys.iterrows():
             ci = int(r.ctx)
-            mix = (m.g_T * P[ci, :, :, 0] + m.g_O * P[ci, :, :, 1]
-                   + m.w_p * P[ci, :, :, 2])
+            has_sing = int(r.singLoc) > 0
+            dproj = ((cphi * P[ci, :, :, 0] + sphi * P[ci, :, :, 1])
+                     if has_sing else 0.0)
+            mix = m.a * P[ci, :, :, 0] - m.b * dproj
             lut[(int(r.targLoc), int(r.singLoc))] = \
                 (torch.relu(mix) * win).sum(-1) + m.g_form * FORM[ci]
     etaT, etaD = m.eta_T.item(), m.eta_D.item()
