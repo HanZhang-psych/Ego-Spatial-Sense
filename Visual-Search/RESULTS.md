@@ -1014,8 +1014,13 @@ The old binned construction is genuinely better by ~0.008-0.011
 NLL/saccade (~190-250 total) on BOTH splits. Point-sensing remains
 the best construction faithful to the map-first spec (pixel relu):
 it recovers most of the sector-average gap (1.43014 -> 1.37599).
-The point-sensing adoption above was decided on the artifact
-numbers - flagged for re-decision.
+RE-DECIDED with the corrected numbers (Han, 2026-09-11):
+point-sensing STAYS the model of record. The ~0.01 predictive edge
+of the binned form comes from rectifying pooled averages - a
+construction that dissolves the pixel-level goal-modified salience
+map the theory is about - and is not worth the spec. The trade is
+on record: the model of record pays ~200 total held-out NLL for a
+readout in which the 2-D priority map is a real object end to end.
 
 Script pipeline MIGRATED to point-sensing (build_contexts.py now
 writes dataset/senses.npz: sensed channels A[ctx,6,3], kernel
