@@ -1,164 +1,150 @@
-"""Train the goal-conditioned ES2 model on reach-avoid demonstrations.
-
-Mirrors train_es2.py (alternating k / rest optimization) but uses the
-goal-augmented input (2 * num_features + 2) and the GoalEs2Model.
-"""
+"""Train GoalHistoryEs2Model on ordered goal-history demonstrations."""
 
 import argparse
 import csv
 import os
 
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm import tqdm
 
-from dataset.dataloader_goal import get_goal_data
-from model.goal_es2 import GoalEs2Model
+from model.goal_history_es2 import GoalHistoryEs2Model
 
 
-def train_model(
-    model_path,
-    log_path,
-    model,
-    data_loader,
-    criterion,
-    optimizer_k,
-    optimizer_rest,
-    scheduler,
-    num_epochs=10,
-    iteration_step=10,
-    update_k=False,
-    update_rest=True,
-):
-    best_loss = float("inf")
-    epoch_losses = []
+def load_tensors(path, num_features, device):
+    df = pd.read_csv(path).reset_index(drop=True)
+    scan_cols = [f"scan_{i}" for i in range(num_features)]
+    scans = torch.tensor(df[scan_cols].values, dtype=torch.float32, device=device)
+    goal = torch.tensor(df[["goal_dx", "goal_dy"]].values, dtype=torch.float32, device=device)
+    player = torch.tensor(df[["player_x", "player_y"]].values, dtype=torch.float32, device=device)
+    goal_xy = torch.tensor(df[["goal_x", "goal_y"]].values, dtype=torch.float32, device=device)
+    spawn = torch.tensor(df["goal_spawn"].values.astype(bool), device=device)
+    goal_present = df["goal_present"].values.astype(bool)
+    target = torch.tensor(df[["fx", "fy"]].values, dtype=torch.float32, device=device)
+    episode = df["episode"].values
+    # a pair that straddles a center respawn would feed the model scans from
+    # two different positions as if continuous; exclude those
+    respawn = df["respawn"].values if "respawn" in df else [0] * len(df)
+    pairs = [i for i in range(len(df) - 1)
+             if episode[i] == episode[i + 1] and not respawn[i + 1]]
+    return df, scans, goal, player, goal_xy, spawn, goal_present, target, \
+        torch.tensor(pairs, device=device)
 
-    for epoch in range(num_epochs):
-        model.train()
-        total_loss = 0.0
 
-        model.spatial_sense_block.k.requires_grad = update_k
-
-        if epoch % iteration_step == 0 and epoch > 0:
-            update_k = not update_k
-            update_rest = not update_rest
-            print(f"Epoch {epoch + 1}: update_k={update_k}, update_rest={update_rest}")
-
-        with tqdm(
-            data_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", unit="batch"
-        ) as progress_bar:
-            for inputs, targets in progress_bar:
-                if update_k:
-                    optimizer_k.zero_grad()
-                elif update_rest:
-                    optimizer_rest.zero_grad()
-
-                action = model(inputs)
-                loss = criterion(action, targets)
-                loss.backward()
-
-                if update_k:
-                    optimizer_k.step()
-                elif update_rest:
-                    optimizer_rest.step()
-
-                total_loss += loss.item()
-                progress_bar.set_postfix(loss=loss.item())
-
-        avg_loss = total_loss / len(data_loader)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.5f}")
-        epoch_losses.append(avg_loss)
-        scheduler.step(avg_loss)
-
-        if avg_loss < best_loss:
-            best_loss = avg_loss
-            torch.save(model.state_dict(), model_path)
-            print(f"New best loss: {best_loss:.4f}. Model saved to {model_path}")
-
-    with open(log_path, mode="w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["loss"])
-        writer.writerows([[loss] for loss in epoch_losses])
-    print(f"Losses saved to {log_path}")
+def build_history_vectors(df, player, goal_xy, spawn, eta, width, height):
+    out = []
+    center = torch.tensor([width / 2, height / 2], dtype=player.dtype, device=player.device)
+    trace = center
+    last_ep = None
+    for i, ep in enumerate(df["episode"].values):
+        if ep != last_ep:
+            trace = center
+            last_ep = ep
+        if bool(spawn[i].item()):
+            trace = (1 - eta) * trace + eta * goal_xy[i]
+        out.append(trace - player[i])
+    return torch.stack(out)
 
 
 def main():
     parser = argparse.ArgumentParser()
-
-    # General settings
-    parser.add_argument("--data_path", type=str, default="dataset/data_goal.csv")
-    parser.add_argument("--log_path", type=str, default="loss_goal_es2.csv")
+    parser.add_argument("--data_path", type=str, default="dataset/data_goal_history.csv")
+    parser.add_argument("--model_path", type=str, default="pretrained/goal_history_es2.pth")
+    parser.add_argument("--log_path", type=str, default="loss_goal_history_es2.csv")
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--model_path", type=str, default="pretrained/goal_es2.pth")
-
-    # Model configuration
     parser.add_argument("--num_features", type=int, default=360)
     parser.add_argument("--num_actions", type=int, default=2)
     parser.add_argument("--sensing_range", type=float, default=800.0)
-
-    # Training configuration
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--width", type=int, default=800)
+    parser.add_argument("--height", type=int, default=800)
     parser.add_argument("--num_epochs", type=int, default=150)
-    parser.add_argument("--iteration_step", type=int, default=10)
-
-    args = parser.parse_args()
-    print(f"Using device: {args.device}")
-
-    scan_columns = [f"scan_{i}" for i in range(args.num_features)]
-    goal_columns = ["goal_dx", "goal_dy"]
-    target_columns = ["fx", "fy"]
-
-    data_loader = get_goal_data(
-        file_path=args.data_path,
-        scan_columns=scan_columns,
-        goal_columns=goal_columns,
-        target_columns=target_columns,
-        batch_size=args.batch_size,
-        device=args.device,
+    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument(
+        "--disable_history",
+        action="store_true",
+        help="freeze beta_H at 0 so the history field never enters the sum",
     )
+    parser.add_argument(
+        "--train_history_only",
+        action="store_true",
+        help="freeze everything except beta_H, history_gain and raw_eta_H "
+        "(stage 2 of staged training; warm-start from a --disable_history "
+        "checkpoint at --model_path)",
+    )
+    parser.add_argument(
+        "--goal_free_only",
+        action="store_true",
+        help="train only on rows where no goal is visible (the anticipation "
+        "periods, where the trace is the sole driver of expert actions)",
+    )
+    args = parser.parse_args()
 
-    model = GoalEs2Model(
+    df, scans, goal, player, goal_xy, spawn, goal_present, target, pairs = load_tensors(
+        args.data_path, args.num_features, args.device
+    )
+    if args.goal_free_only:
+        keep = ~torch.tensor(goal_present, device=args.device)
+        pairs = pairs[keep[pairs + 1]]
+        print(f"goal-free rows only: {len(pairs)} training pairs")
+    model = GoalHistoryEs2Model(
         num_features=args.num_features,
         num_actions=args.num_actions,
         sensing_range=args.sensing_range,
     ).to(args.device)
-
     if os.path.exists(args.model_path):
         print(f"Loading model parameters from {args.model_path}")
         model.load_state_dict(torch.load(args.model_path, map_location=args.device))
-    else:
-        print("No pre-trained model found. Starting training from scratch.")
+    if args.disable_history:
+        with torch.no_grad():
+            model.beta_H.zero_()
+        model.beta_H.requires_grad = False
+        print("history DISABLED (beta_H frozen at 0)")
+    if args.train_history_only:
+        hist_params = {"beta_H", "raw_eta_H"} | {
+            f"history_gain.{n}" for n, _ in model.history_gain.named_parameters()
+        }
+        n_train = 0
+        for name, prm in model.named_parameters():
+            prm.requires_grad = name in hist_params
+            n_train += prm.numel() if prm.requires_grad else 0
+        print(f"HISTORY-ONLY training: {n_train} trainable parameters")
 
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     criterion = nn.MSELoss()
+    losses = []
+    best = float("inf")
 
-    k_params = [model.spatial_sense_block.k]
-    other_params = [
-        p for name, p in model.named_parameters() if all(p is not kp for kp in k_params)
-    ]
+    for epoch in range(args.num_epochs):
+        hist = build_history_vectors(
+            df, player, goal_xy, spawn, model.eta_H, args.width, args.height
+        )
+        i0 = pairs
+        i1 = pairs + 1
+        inputs = torch.cat([scans[i0], scans[i1], goal[i1], hist[i1]], dim=1)
+        pred = model(inputs)
+        loss = criterion(pred, target[i1])
 
-    optimizer_k = optim.Adam(k_params, lr=args.learning_rate * 0.2)
-    optimizer_rest = optim.Adam(other_params, lr=args.learning_rate)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
 
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer_rest, mode="min", factor=0.5, patience=10
-    )
+        if loss.item() < best:
+            best = loss.item()
+            os.makedirs(os.path.dirname(args.model_path), exist_ok=True)
+            torch.save(model.state_dict(), args.model_path)
+        if epoch % 10 == 0 or epoch == args.num_epochs - 1:
+            print(
+                f"epoch {epoch}: loss={loss.item():.5f} "
+                f"eta_H={model.eta_H.item():.4f} beta_H={model.beta_H.item():+.4f}"
+            )
 
-    train_model(
-        model_path=args.model_path,
-        log_path=args.log_path,
-        model=model,
-        data_loader=data_loader,
-        criterion=criterion,
-        optimizer_k=optimizer_k,
-        optimizer_rest=optimizer_rest,
-        scheduler=scheduler,
-        num_epochs=args.num_epochs,
-        iteration_step=args.iteration_step,
-        update_k=False,
-        update_rest=True,
-    )
+    with open(args.log_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["loss"])
+        writer.writerows([[x] for x in losses])
+    print(f"best loss {best:.5f}; model saved to {args.model_path}")
 
 
 if __name__ == "__main__":
