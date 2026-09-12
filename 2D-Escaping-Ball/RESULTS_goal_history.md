@@ -448,6 +448,59 @@ anticipation.  Conclusion: the spawn floor is not the lever; the
 magnitude shrinkage of the cloned anticipation (and near-goal control
 generally) is where the imitation gap lives.
 
+## Target-location priming: mechanism-sufficiency demonstration (2026-09-12)
+
+Reframing (Han): the end goal is the agent-side analog of the search
+model's target-location priming (tutorial Sec. 9c), not goalless drift
+per se - and behavioral cloning from a history-blind expert cannot
+produce it, while training the expert to drift measures probability
+cueing instead.  So this is a sufficiency demonstration, not a training
+evaluation: add a history field to a competent trained policy and show
+the human signature appears, dose-dependently, with no training.
+
+Construction (`evaluate_priming_goal_history.py`): base policy = the
+trained history-disabled respawn checkpoint (its own history channel is
+exactly zero, asserted).  The previous goal location (one-back trace)
+is fed through the TRAINED goal-gain machinery as a faint goal -
+`beta_H * geometric_field(trace - player, goal_gain)` added to the
+obstacle + goal fields.  The single free parameter is beta_H, swept
+with beta_H = 0 as the built-in control.  Trials (fixation-start,
+~300/beta over 3 seeds): teleport to center; 25 goal-free steps (drift
+toward the remembered location logged); goal onset - REPEAT trials at
+the previous goal's location, CHANGE trials at matched eccentricity
+rotated 90-270 deg; steps-to-goal and first-step heading error
+recorded.
+
+```text
+beta   repeat steps   change steps   priming(chg-rep)   drift px/step   timeouts
+0.0    63.9           56.9            -7.0              -0.12             2
+0.1    50.2           80.0           +29.8              +0.64            13
+0.2    42.8          152.8          +110.0              +1.90            50
+0.4    31.8          183.7          +151.9              +4.29           143
+```
+
+The full human signature, from one parameter:
+
+1. No mechanism, no effect (beta 0: repeat ~ change; the -7 baseline
+   asymmetry is noise-scale relative to the effects).
+2. Repeat facilitation grows monotonically (63.9 -> 31.8 steps).
+3. Change cost grows faster (56.9 -> 183.7), with timeouts exploding at
+   high beta - the agent is captured by the remembered location and
+   fails to disengage: the navigation analog of attentional capture by
+   selection history.
+4. Anticipatory goalless drift emerges from the SAME mechanism and
+   scales with the same beta (-0.1 -> +4.3 px/step) - history as
+   anticipation and history as priming unified under one parameter,
+   with no drift-specific training.
+
+First-step heading error barely moves at low beta (9.8-10.5 deg): the
+visible goal dominates the initial turn, and the priming lives in the
+en-route dynamics.  beta ~ 0.1 is the human-plausible regime - clear
+repeat benefit, moderate change cost - before the mechanism tips into
+capture.  This parallels the search model's history term exactly: a
+small parametric bolt-on entering through the same spatial machinery as
+the goal, whose strength determines both the benefit and the bias.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
