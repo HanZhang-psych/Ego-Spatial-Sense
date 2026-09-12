@@ -37,7 +37,7 @@ def probs(targCol, singCol, targLoc, singLoc):
     A = display_senses(6, targLoc, singLoc, targCol, singCol) / NORM
     A = torch.tensor(A)
     with torch.no_grad():
-        F = WIN6 * (m.g_T * A[:, 0] + m.g_D * A[:, 1] + m.g_F * A[:, 2])
+        F = WIN6 * (m.g_C * A[:, 0] + m.g_F * A[:, 1])
     return torch.softmax(F[None], 1)[0].numpy()
 
 

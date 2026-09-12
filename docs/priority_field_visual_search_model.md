@@ -13,11 +13,12 @@ action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 **Final model of record (search side), one sentence:** scoped to the
 FIRST saccade of each trial (launched from central fixation), one
 priority map assembled from minimal goal-weighted evidence —
-g_T·relu(target-color contrast) − g_D·relu(distractor-color
-contrast): ONE-SIDED rectified channels, chosen for interpretability
-(g_T = pure enhancement of the target color, g_D = pure suppression
-of the distractor color; the fully linear signed field fits identically to
-within noise, and rectify-after-the-gains remains rejected) — plus
+g_C·D_T(x), a SINGLE SIGNED gain on the template-axis color
+contrast (adopted 2026-09-11: one parameter lifts goal-colored
+locations and depresses opposite-colored ones together; the earlier
+two-gain rectified split - "pure enhancement" g_T / "pure
+suppression" g_D - is unidentified in two-color displays, the
+g_T/g_D ridge in RESULTS, and all forms fit identically) — plus
 the pixel-derived template-shape map and the two world-anchored
 leaky location traces rendered as a HISTORY FIELD (each item's
 trace value placed at its location, smoothed by a fixed sigma=0.03

@@ -23,9 +23,9 @@ are paper-sourced (the OSF trial files carry no display parameters).
 All displays use the canonical green-target / red-singleton scheme
 (see normalize_colors).
 
-Output: dataset/senses.npz -- A [ctx, 6, 3] (sensed channels: relu
-target-color contrast, MINUS relu distractor-color contrast, shape
-match; divided by NORM, the per-channel std over unique displays),
+Output: dataset/senses.npz -- A [ctx, 6, 2] (sensed channels: the
+SIGNED template-axis color contrast D_T and the shape match;
+divided by NORM, the per-channel std over unique displays),
 NORM [3], BH6/BH4 [6, 6] (sensed history kernel per set size),
 D6/D4 [6] (sensed distances from fixation). Plus
 dataset/saccades_ctx.csv (saccades with ctx ids).
@@ -171,11 +171,13 @@ def item_centers(setsize):
 
 
 def display_senses(setsize, targLoc, singLoc, targCol, singCol):
-    """One display -> the model's sensed evidence A [6, 3]: the three
-    channel maps (relu target-color contrast, MINUS relu
-    distractor-color contrast, shape match / its max) evaluated at
-    each item's center. Mirrors the notebook's channel_maps exactly;
-    unnormalized (main() divides by the per-channel stds)."""
+    """One display -> the model's sensed evidence A [6, 2]: the two
+    channel maps (SIGNED template-axis color contrast D_T, shape
+    match / its max) evaluated at each item's center. singCol only
+    affects the rendering - the single goal gain g_C weighs the
+    signed projection of whatever colors are on screen. Mirrors the
+    notebook's channel_maps exactly; unnormalized (main() divides by
+    the per-channel stds)."""
     pos, _ = item_positions(setsize)
     items = [dict(x=pos[k][0], y=pos[k][1],
                   color=(singCol if (k + 1) == singLoc and singCol != "none"
@@ -184,18 +186,11 @@ def display_senses(setsize, targLoc, singLoc, targCol, singCol):
     img = render(items)
     maps = opponency_contrast(img)
     u = template_axis(targCol)
-    perp = (-u[1], u[0])
-    gmap = u[0] * maps["RG"] + u[1] * maps["BY"]
-    omap = perp[0] * maps["RG"] + perp[1] * maps["BY"]
-    uS = template_axis(singCol if singCol != "none"
-                       else OPPONENT.get(targCol, "red"))
-    cph = u[0] * uS[0] + u[1] * uS[1]
-    sph = perp[0] * uS[0] + perp[1] * uS[1]
-    dmap = cph * gmap + sph * omap
+    gmap = u[0] * maps["RG"] + u[1] * maps["BY"]     # signed D_T
     sm = shape_match_map(img)
     sm = sm / max(sm.max(), 1e-9)
-    chans = np.stack([np.maximum(gmap, 0), -np.maximum(dmap, 0), sm])
-    A = np.zeros((6, 3), dtype=np.float32)
+    chans = np.stack([gmap, sm])
+    A = np.zeros((6, 2), dtype=np.float32)
     for j, (py, px) in enumerate(item_centers(setsize)):
         A[j] = chans[:, py, px]
     return A
@@ -237,7 +232,7 @@ def main():
     keys["ctx"] = np.arange(len(keys))
     n = len(keys)
     print(f"{n} unique contexts")
-    A = np.zeros((n, 6, 3), dtype=np.float32)
+    A = np.zeros((n, 6, 2), dtype=np.float32)
     cache = {}
     for _, k in keys.iterrows():
         dk = (int(k.setsize), int(k.targLoc), int(k.singLoc),
@@ -248,7 +243,7 @@ def main():
     # per-channel unit constants: std over the UNIQUE displays' sensed
     # values - a pure unit choice keeping the gains O(1) (identical to
     # the notebook's NORM)
-    norm = np.stack(list(cache.values())).reshape(-1, 3).std(0)
+    norm = np.stack(list(cache.values())).reshape(-1, 2).std(0)
     A /= norm
     np.savez_compressed("dataset/senses.npz", A=A, NORM=norm,
                         BH6=kernel_matrix(6), BH4=kernel_matrix(4),

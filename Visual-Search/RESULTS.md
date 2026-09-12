@@ -1080,6 +1080,28 @@ record (every parameter identified and sign-interpretable; the
 enhancement-vs-suppression split becomes a stated limit of
 two-color paradigms rather than two model parameters).
 
+## ADOPTED: single signed goal-color gain g_C (parameterization of
+## record; Han's call, 2026-09-11)
+
+Full respec landed: Sec. 1's color term is g_C * D_T(x) (signed
+template-axis contrast, no rectifiers in the color pathway), eight
+learned parameters, all identified and sign-interpretable; notebook
+Secs. 1/3/7/8/10b rewritten; scripts (display_senses A[ctx,6,2],
+model.field, stilwell) migrated; weights_final.json refit.
+
+- Notebook fit (66-split): held-out NLL 1.37416 - the best number
+  of any construction yet (two-gain point 1.37599); pseudo-R2
+  0.214, top-1 45.7%; sanity vs literal model 0.0.
+- Script fit (67-split): test 1.39750; g_C +0.234, g_F +0.516,
+  beta 2.20/-0.51, eta 0.60/0.16 (notebook: g_C +0.230, matching).
+- Batteries improved across the board: suppression 42.7/7.4/13.0
+  (obs 40.3/6.8/13.7); priming 74.7/35.6 and 4.4/7.8; and the
+  Stilwell gradient is now nearly CALIBRATED, not just ordered -
+  full battery 7.2/10.6 vs observed 7.0/11.3 (notebook light
+  version 7.1/10.7 vs 7.1/11.4). The two-gain form's overshoot
+  (11.2/21.2) was an artifact of the arbitrary ridge split; the
+  identified net modulation generalizes cleanly.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

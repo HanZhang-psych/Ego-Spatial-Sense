@@ -2,8 +2,9 @@
 
 The model builds a PRE-WINDOW priority map over the display -
 
-  map(x) = g_T * relu(target-color contrast at x)
-         - g_D_eff * relu(distractor-color contrast at x)
+  map(x) = g_C * D_T(x)     (SIGNED template-axis color contrast:
+                             one gain lifts goal-colored locations
+                             and depresses opposite-colored ones)
          + g_F * shape match at x
          + beta_T * h_T field(x) + beta_D * h_D field(x)
 
@@ -16,14 +17,17 @@ see RESULTS). Softmax over the six sensed values predicts the first
 saccade.
 
 Implementation: the sensed channel values are precomputed
-(build_contexts.py: A[ctx, item, channel], with the distractor
-channel stored as MINUS relu(distractor contrast), so the fitted
-g_D > 0 means suppression), the history kernel is the sensed matrix
+(build_contexts.py: A[ctx, item, channel] = signed D_T and shape
+match at the item centers), the history kernel is the sensed matrix
 BH (~identity), and
 
   F_i = sigmoid(k*(r0 - d_i)) *
-        [ g_T*A[i,0] + g_D*A[i,1] + g_F*A[i,2]
+        [ g_C*A[i,0] + g_F*A[i,1]
           + ((beta_T*h_T + beta_D*h_D) @ BH.T)[i] ]
+
+The single g_C is the identified NET goal modulation: two-color
+displays cannot separate target-color enhancement from
+distractor-color suppression (the g_T/g_D ridge; RESULTS).
 
 With all items on one ring, the window weight is one shared scalar -
 a pure softmax temperature - so k, r0 are not separately
@@ -46,8 +50,7 @@ NLOC = 6
 class SearchModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.g_T = nn.Parameter(torch.tensor(0.5))        # enhance target color
-        self.g_D = nn.Parameter(torch.tensor(0.3))        # suppress distractor color
+        self.g_C = nn.Parameter(torch.tensor(0.5))   # goal-color gain (signed D_T)
         self.g_F = nn.Parameter(torch.tensor(1.0))   # template-shape gain
         self.raw_k = nn.Parameter(torch.tensor(1.0))    # window steepness
         self.r0 = nn.Parameter(torch.tensor(0.5))       # window reach
@@ -94,14 +97,12 @@ class SearchModel(nn.Module):
     def field(self, A, hT, hD, BH6, BH4, m6, D6, D4):
         """Point-sensing readout: F_i = w(d_i) * P-sensed-at-item-i.
 
-        A [N,6,3]: per-saccade sensed channels (relu target-color
-        contrast, MINUS relu distractor-color contrast, shape match)
-        in dataset units - g_D > 0 therefore means suppression.
-        BH6/BH4: history kernel sensed between item centers; D6/D4:
-        sensed distances from fixation; m6: set-size-6 mask."""
+        A [N,6,2]: per-saccade sensed channels (signed template-axis
+        contrast D_T, shape match) in dataset units. BH6/BH4:
+        history kernel sensed between item centers; D6/D4: sensed
+        distances from fixation; m6: set-size-6 mask."""
         vals = self.beta_T * hT + self.beta_D * hD
-        sal = (self.g_T * A[..., 0] + self.g_D * A[..., 1]
-               + self.g_F * A[..., 2])
+        sal = self.g_C * A[..., 0] + self.g_F * A[..., 1]
         F = torch.zeros(A.shape[0], 6)
         for msk, BH, D in ((m6, BH6, D6), (~m6, BH4, D4)):
             win = torch.sigmoid(self.k * (self.r0 - D))
@@ -110,7 +111,7 @@ class SearchModel(nn.Module):
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(
-            g_T=self.g_T.item(), g_D=self.g_D.item(),
+            g_C=self.g_C.item(),
             g_F=self.g_F.item(), k=self.k.item(), r0=self.r0.item(),
             beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
             eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
@@ -119,7 +120,7 @@ class SearchModel(nn.Module):
     def load_values(self, w):
         import numpy as np
         with torch.no_grad():
-            for n in ("g_T", "g_D", "g_F", "r0",
+            for n in ("g_C", "g_F", "r0",
                       "beta_T", "beta_D"):
                 getattr(self, n).copy_(torch.tensor(float(w[n])))
             self.raw_k.copy_(torch.tensor(float(np.log(np.expm1(w["k"])))))
