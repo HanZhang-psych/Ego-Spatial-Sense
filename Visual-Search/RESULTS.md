@@ -1102,6 +1102,25 @@ model.field, stilwell) migrated; weights_final.json refit.
   (11.2/21.2) was an artifact of the arbitrary ridge split; the
   identified net modulation generalizes cleanly.
 
+## History inside vs outside the attention window: untestable here
+## (Han's question)
+
+Variant fitted with the history term added AFTER the window
+(F_i = w(d_i)*salience_i + history_i) vs the record's
+w(d_i)*(salience_i + history_i). Same recipe/split/epochs: held-out
+NLL 1.39700 vs 1.39750 - a tie (~12 total NLL), exactly as the
+scope algebra predicts: from central fixation every sensed point
+shares ONE window weight, so moving history across the window just
+rescales the betas (2.13/-0.49 vs 2.20/-0.51 ~ the w(0.5) factor).
+Demonstration in the fit itself: with history outside, the window
+became fully decorative and the optimizer drifted to a REVERSED
+window (k = -5.6), compensated by ~2.6x larger gains - pure
+reparameterization. The record keeps history INSIDE the window on
+theoretical grounds (one pre-window map, one window gating
+stimulus and history alike), now an explicitly stated choice;
+designs with eccentricity variation or peripheral fixations would
+be needed to test the placement.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
