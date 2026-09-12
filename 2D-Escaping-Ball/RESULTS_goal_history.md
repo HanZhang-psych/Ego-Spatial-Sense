@@ -261,6 +261,53 @@ The dissociating experiment is a frequent region that MOVES between
 episodes (or mid-episode): a static prior then fails, and only a model
 whose trace tracks recent goals can anticipate correctly.
 
+### Respawn-at-center redesign (2026-09-12, fixation-start structure)
+
+Han's correction to the design above: every goal cycle should begin with
+the agent teleported back to the center (the fixation point), so
+anticipation always starts from a common origin.  Implemented as
+`--respawn_center` in the expert and the evaluator; demonstrations carry
+a `respawn` column and the trainer excludes scan pairs that straddle a
+teleport (the looming delta would otherwise compare two positions as if
+continuous).  Dataset: `data_goal_history_biased_respawn_360.csv`
+(not committed - 76 MB class of file); expert 798 goals, 6.0
+collisions/min - the teleport can land the expert next to traffic, so
+even the expert now collides.  Same biased world, 150 epochs each,
+eval 3 seeds x 6,000 steps with `--respawn_center`:
+
+```text
+                    train loss   goals/min   coll/min   free drift   freq/rare steps per 100px
+expert (demos)      -            39.9        6.0        -            -
+with history        14.19        21.0        1.3        -0.43        33.9 / 13.9
+history disabled    18.32        40.3        6.3        +0.12        17.4 / 15.5
+```
+
+The redesign sharpened the imitation story and reversed nothing at
+rollout:
+
+1. History now genuinely explains the demonstrations: the training-loss
+   gap widened to 4.1 (14.2 vs 18.3; it was 1.3 in the no-respawn
+   design).  From a fixed start, where the expert drifts during
+   anticipation is determined by its trace, and only the history channel
+   can represent that.
+2. The no-history model reproduces the expert almost exactly at rollout
+   (40.3 vs 39.9 goals/min, 6.3 vs 6.0 collisions/min) but shows NO
+   anticipatory drift (+0.12 px/step, frequent/rare path efficiency
+   nearly equal) - with respawn, the static-prior shortcut that
+   contaminated the previous design is gone.
+3. The with-history model again fits better and performs worse: half the
+   throughput (21.0), drift AWAY from the frequent region (-0.43), and
+   markedly inefficient paths to frequent-region goals (33.9 steps per
+   100 px).  Its trace field helps predict expert actions one step at a
+   time but destabilizes the closed loop - compounding-error brittleness
+   of behavioral cloning concentrated in the newly-added channel.
+
+Standing conclusion so far: in this task family the history channel
+buys in-sample imitation fit, not closed-loop competence.  The honest
+open question is whether that reflects the channel (geometric trace
+field) or the training method (single-step behavioral cloning with no
+rollout correction, e.g. no DAgger).
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's

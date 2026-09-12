@@ -61,6 +61,11 @@ def run_seed(model, args, seed):
         tracker.update(player, balls)
 
     while steps < args.max_steps:
+        if args.respawn_center:
+            # fixation-start structure: every cycle begins at the center
+            player.x, player.y = args.width // 2, args.height // 2
+            tracker.in_contact.clear()
+            prev = None
         start_dist = math.hypot(player.x - QUAD[0], player.y - QUAD[1])
         for _ in range(args.goal_free_steps):
             if steps >= args.max_steps:
@@ -126,6 +131,11 @@ def main():
     parser.add_argument("--min_spawn_dist", type=float, default=250)
     parser.add_argument("--num_seeds", type=int, default=3)
     parser.add_argument("--random_seed", type=int, default=42)
+    parser.add_argument(
+        "--respawn_center",
+        action="store_true",
+        help="teleport the player to the center at the start of every goal cycle",
+    )
     parser.add_argument(
         "--disable_history",
         action="store_true",

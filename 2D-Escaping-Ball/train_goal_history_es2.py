@@ -22,7 +22,11 @@ def load_tensors(path, num_features, device):
     spawn = torch.tensor(df["goal_spawn"].values.astype(bool), device=device)
     target = torch.tensor(df[["fx", "fy"]].values, dtype=torch.float32, device=device)
     episode = df["episode"].values
-    pairs = [i for i in range(len(df) - 1) if episode[i] == episode[i + 1]]
+    # a pair that straddles a center respawn would feed the model scans from
+    # two different positions as if continuous; exclude those
+    respawn = df["respawn"].values if "respawn" in df else [0] * len(df)
+    pairs = [i for i in range(len(df) - 1)
+             if episode[i] == episode[i + 1] and not respawn[i + 1]]
     return df, scans, goal, player, goal_xy, spawn, target, torch.tensor(pairs, device=device)
 
 
