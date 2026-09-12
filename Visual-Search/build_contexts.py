@@ -15,8 +15,11 @@ approximation of it.
 
 The painted history field is precomputed the same way as pure
 geometry: history_matrix() bins each item's unit-history kernel bump
-(fixed smoothing PAINT_SIG = 0.03, normalized so each bump carries
-unit own-sector mass - sigma sets spread, not weight).
+(fixed smoothing PAINT_SIG = 0.03). Each bump is a FIXED-MASS kernel
+- a density times one global constant, identical for every bump and
+every sigma - so sigma sets only how far a bump spreads, never how
+much it counts; the constant is a unit convention that keeps the
+betas in the same units as the salience gains.
 
 Reconstruction assumptions: per-trial set size, colors, and item
 distances come from the data files; shapes, item size, and background
@@ -243,9 +246,10 @@ def history_matrix(setsize):
         bump = np.exp(-((xx - px) ** 2 + (yy - py) ** 2)
                       / (2 * (PAINT_SIG * px_per_unit) ** 2))
         HM[:, jslot] = _bin_map(bump, si, bi, denom, setsize)
-    # normalize so a unit history contributes unit binned mass in its
-    # own sector (pure reparameterization; keeps the betas O(1) and
-    # makes PAINT_SIG control spread only, not weight)
+    # fix the kernel's total mass (one global constant, the same for
+    # every bump and every PAINT_SIG): a pure unit convention, chosen
+    # so the betas stay O(1) in salience units, and the reason
+    # PAINT_SIG controls spread only, never weight
     HM /= max(float(np.einsum("iid->i",
                               HM[:setsize, :setsize]).mean()), 1e-9)
     return HM
