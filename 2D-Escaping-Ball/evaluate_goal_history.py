@@ -32,6 +32,8 @@ def run_seed(model, args, seed):
     prev = None
     trace = torch.tensor([args.width / 2, args.height / 2], dtype=torch.float32)
     goals = collisions = steps = 0
+    spawns = {True: 0, False: 0}
+    reached_n = {True: 0, False: 0}
     free_drift = []
     frequent_steps = []
     rare_steps = []
@@ -79,6 +81,7 @@ def run_seed(model, args, seed):
 
         goal = sample_goal_biased(player, args)
         trace = (1 - model.eta_H.detach().cpu()) * trace + model.eta_H.detach().cpu() * torch.tensor(goal)
+        spawns[in_quad(goal)] += 1
         region = frequent_steps if in_quad(goal) else rare_steps
         spawn_dist = max(math.hypot(goal[0] - player.x, goal[1] - player.y), 1e-6)
         used = 0
@@ -92,6 +95,7 @@ def run_seed(model, args, seed):
                 break
         if reached:
             region.append(used / spawn_dist * 100)
+            reached_n[in_quad(goal)] += 1
 
     minutes = steps / 50 / 60
     collisions = tracker.count
@@ -103,6 +107,10 @@ def run_seed(model, args, seed):
         ),
         "frequent_steps_per_100px": sum(frequent_steps) / len(frequent_steps) if frequent_steps else float("nan"),
         "rare_steps_per_100px": sum(rare_steps) / len(rare_steps) if rare_steps else float("nan"),
+        "frequent_reach_rate": reached_n[True] / max(spawns[True], 1),
+        "rare_reach_rate": reached_n[False] / max(spawns[False], 1),
+        "frequent_spawns": spawns[True],
+        "rare_spawns": spawns[False],
     }
 
 

@@ -344,6 +344,40 @@ to explain.  This mirrors the search model's separation between fixed
 salience/goal machinery and the small set of history parameters fitted
 on top.
 
+### Split by target location: likely vs unlikely (2026-09-12)
+
+Per-region reach rates added to the evaluator (goals reached / goals
+spawned per region; the efficiency metric alone misses timeouts).
+Staged-history vs history-disabled, same protocol:
+
+```text
+                         staged history      history disabled
+frequent (likely):
+  steps per 100 px       19.3                17.4
+  reach rate             0.978               0.986
+rare (unlikely):
+  steps per 100 px       23.0                15.5
+  reach rate             1.000               1.000
+freq/rare efficiency     0.84                1.12
+```
+
+The signature is an interaction, not a main effect.  The
+history-disabled model treats the two regions alike (in fact slightly
+faster to rare goals, 15.5 vs 17.4).  The staged model reverses the
+ordering: frequent goals are reached ~16% more efficiently than rare
+ones (19.3 vs 23.0).  In absolute terms the staged model pays a cost in
+both regions relative to the ablated model, but the cost is
+concentrated on unlikely targets (+7.5 steps/100px at rare vs +1.9 at
+frequent) - anticipatory drift toward the frequent region leaves the
+agent poorly positioned when the goal appears elsewhere.  Reach rates
+are at ceiling for both models in both regions, so the effect is purely
+in path efficiency, not success.
+
+This is the agent-model analog of the search paradigm's
+likely-vs-unlikely location effect: history helps where the
+environment's statistics repeat and costs where they break - the
+biased-attention trade-off, now in closed-loop navigation.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
