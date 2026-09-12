@@ -3,21 +3,32 @@
 One pass: read dataset/saccades.csv (from pool_data.py), normalize
 colors, assign a context id to every unique (setsize, targLoc,
 singLoc, targCol, singCol, fixation) combination, render each unique
-display once (feature search: target diamond among heterogeneous
-nontarget shapes, singleton in the study's opposite color), compute
-opponency-contrast maps, and sample template-rotated radial profiles
-along rays from each fixation.
+display once (feature search: target circle among heterogeneous
+nontarget shapes, singleton in the opposite color), compute the
+pre-window evidence maps (template-rotated color channels + the
+pixel-derived shape-match map), and regroup each map EXACTLY into
+sector x distance-bin area averages (sector_geometry / _bin_map):
+summing a map's binned contributions against the attention window's
+per-bin values reproduces the sector average of window * map, so
+training on these tables is the pixel construction, not an
+approximation of it.
+
+The painted history field is precomputed the same way as pure
+geometry: history_matrix() bins each item's unit-history kernel bump
+(fixed smoothing PAINT_SIG = 0.03, normalized so each bump carries
+unit own-sector mass - sigma sets spread, not weight).
 
 Reconstruction assumptions: per-trial set size, colors, and item
 distances come from the data files; shapes, item size, and background
 are paper-sourced (the OSF trial files carry no display parameters).
-Color fallbacks: junk/NaN targCol -> the subject's modal valid value,
-else green; missing singCol on singleton-present trials -> the
-opponent of the target color.
+All displays use the canonical green-target / red-singleton scheme
+(see normalize_colors).
 
-Output: dataset/contexts.npz (profiles P [ctx, 6, NBINS, 3]:
-template axis D_T, orthogonal D_O, presence D_P; FORM [ctx, 6]; range
-R [ctx, 6]) + dataset/saccades_ctx.csv (saccades with ctx ids).
+Output: dataset/contexts.npz -- P [ctx, 6, NBINS, 3] (binned D_T,
+D_O, presence), FORMP [ctx, 6, NBINS] (binned shape match), HM6/HM4
+[6, 6, NBINS] (binned history-kernel geometry per setsize); each
+array std-normalized as in main(). Plus dataset/saccades_ctx.csv
+(saccades with ctx ids).
 
 Usage: python build_contexts.py
 """
@@ -32,8 +43,6 @@ OPPONENT = {"green": "red", "red": "green", "blue": "orange",
             "orange": "blue", "pink": "teal", "teal": "pink"}
 COLORS.setdefault("orange", (0.95, 0.55, 0.05))
 NBINS = 24
-NRAYS = 90
-WEDGE_DEG = 30.0
 MAXR = 1.1
 
 
