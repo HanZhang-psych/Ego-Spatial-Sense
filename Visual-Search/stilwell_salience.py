@@ -6,11 +6,13 @@ Stilwell's LOW-salience trials are excluded from the pooled dataset
 entirely (pool_data.py) - so the low-salience condition is fully
 out-of-sample: neither its colors nor its choices ever touch the
 fit. Weights are applied, unchanged, to Stilwell's displays rendered
-with the paper's EXACT stimulus colors (converted from its CIE xyY
-coordinates - front_end.STILWELL_COLORS; high-salience pairs sit
-~180 deg apart in CIE space, low-salience pairs ~27 deg). Sensed
-evidence (point-sensing readout), zero history traces (they balance
-across conditions). Needs the raw Stilwell2023.txt (not in repo).
+with the pipeline's SCHEMATIC colors (a "red vs a less-red" family;
+Han's call - the aim is the qualitative gradient, not Stilwell's
+exact numbers. The paper's exact CIE colors were probed once and
+INVERT the gradient under this crude opponency front end - on
+record in RESULTS - so the claim is scoped to schematic colors).
+Sensed evidence (point-sensing readout), zero history traces (they
+balance across conditions). Needs Stilwell2023.txt (not in repo).
 
   python stilwell_salience.py [path/to/Stilwell2023.txt]
 """
@@ -21,11 +23,7 @@ import pandas as pd
 import torch
 
 from build_contexts import display_senses
-from front_end import STILWELL_COLORS  # noqa: F401  (registers st_* colors)
 from model import load_final
-
-ST = {"red": "st_red", "blue": "st_blue", "pink": "st_pink",
-      "teal": "st_teal"}
 
 m = load_final()
 S = np.load("dataset/senses.npz")
@@ -36,7 +34,7 @@ with torch.no_grad():
 
 
 def probs(targCol, singCol, targLoc, singLoc):
-    A = display_senses(6, targLoc, singLoc, ST[targCol], ST[singCol]) / NORM
+    A = display_senses(6, targLoc, singLoc, targCol, singCol) / NORM
     A = torch.tensor(A)
     with torch.no_grad():
         F = WIN6 * (m.g_T * A[:, 0] + m.g_D * A[:, 1] + m.g_F * A[:, 2])

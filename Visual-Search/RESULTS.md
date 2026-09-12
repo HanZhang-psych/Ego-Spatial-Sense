@@ -1033,11 +1033,15 @@ point model INVERTS the salience gradient: model high 16.9% vs low
 13.9% singleton rate (observed 7.0/11.3), driven by blue-singleton
 pairs (27-34% predicted capture). The crude RG/BY opponency front
 end does not respect CIE geometry - the generic colors had been
-accidentally flattering. The out-of-sample Stilwell reproduction is
-therefore NOT currently supported under the true stimulus colors;
-open questions: calibrate the opponency axes (e.g., CIE-based
-color space) or re-scope the claim. Notebook Sec. 10b not yet
-re-executed pending this decision.
+accidentally flattering. RESOLVED (Han's call): the aim is the
+qualitative gradient, not Stilwell's numbers or colors - the
+battery stays on the pipeline's SCHEMATIC colors ("a red vs a less
+red"), where the point model orders correctly (high 11.2% vs low
+20.9% singleton rate; observed 7.0/11.3). The exact-color inversion
+stands on record as a front-end limitation, and a CIELAB-opponency
+probe did NOT fix it (canonical fit identical at 1.39774; exact-
+color gradient still inverted) - the schematic-color scoping is a
+stated limitation, not a solvable calibration.
 
 ## Caveats on record
 

@@ -39,21 +39,6 @@ COLORS = {
 }
 BG = (0.35, 0.35, 0.35)
 
-# Stilwell et al. 2023 (PB&R) stimulus colors, converted from the
-# paper's CIE xyY coordinates (all 30 cd/m^2: red x=.646 y=.324,
-# blue .189/.252, pink .610/.305, teal .215/.368) to sRGB at a
-# common in-gamut luminance; the paper's red/pink sit slightly
-# outside sRGB and are minimally clipped. High-salience pairs are
-# ~180 deg apart in CIE space, low-salience pairs ~27 deg - visible
-# here as pink~red and teal~blue.
-STILWELL_COLORS = {
-    "st_red": (1.000, 0.000, 0.013),
-    "st_blue": (0.000, 0.541, 0.700),
-    "st_pink": (0.993, 0.000, 0.225),
-    "st_teal": (0.000, 0.564, 0.496),
-}
-COLORS.update(STILWELL_COLORS)
-
 
 def render(items, scale=1):
     """items: list of dicts {x, y, color, shape} in centered coords
