@@ -956,6 +956,33 @@ record), or (b) promote rectify-after-pooling to a stated model
 assumption and keep 1.390. Stilwell ordering survives either way
 (4.9/8.7 model vs 7.1/11.4 observed under the pixel fit).
 
+## Point-sensing readout (Han's LiDAR idea): best fit of all forms
+
+Instead of averaging the priority map over each item's sector, sense
+it AT each item's center - six point samples across six directions,
+like the escaping-ball agent's per-ray looming sensor. Keeps pixel
+relu (the map-first spec fully intact) and changes only the readout:
+F_i = P(x_i). Full data, same split and recipe, exact cache (six
+sensed pixels per display; history kernel peak-normalized - the
+point-readout dual of fixed mass, so a fully-primed own bump senses
+as exactly beta):
+
+- point-sensing: held-out NLL 1.37599, pseudo-R2 0.213, top-1
+  45.9% - BEATS both the binned record (1.39041) and the
+  sector-average pixel fit (1.43014); converged flat by epoch 150.
+- healthy history structure returns: eta 0.60/0.15, beta 2.20/-0.51
+  (the sector-average fit's eta_D collapse is gone).
+- with iso-eccentric items the window w(0.5) is a pure softmax
+  temperature: k, r0 exactly unidentifiable (the flat-window
+  theory-definition note now holds exactly, not approximately).
+- caveat: at item centers the two color channels are nearly
+  collinear (g_T -1.13 / g_D +1.14 individually uninterpretable;
+  only the combination is identified - the standing two-color
+  caveat, stronger under point sampling).
+
+Pending Han's call: adopt as the construction of record (Sec. 1
+readout step, predict_saccade, kernel convention, Sec. 8 cache).
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
