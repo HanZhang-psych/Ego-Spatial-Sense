@@ -1201,6 +1201,57 @@ predicts: g_C 0.226 -> 0.353 (= x GREY_C / 0.965), g_F 0.498 ->
 no special handling - their weaker schematic colors simply sense
 below full scale under the same fixed constant.
 
+## Section 9 evaluation redesign: regenerated saccades,
+## subject-level statistics (2026-09-12)
+
+The notebook's three signature-pattern panels no longer report
+pooled expected probabilities. All three now score REGENERATED
+saccades - one draw per real held-out trial from the model's
+predicted softmax, conditioned on each subject's actual history -
+through the same per-subject pipeline as the real eye movements:
+per-subject means over the 66 held-out people, seaborn bootstrap
+95% CIs (n_boot 10,000, seed 0), pingouin tests. Rationale: the
+model line then carries the same trial-count binomial noise as the
+people line, so its error bars and tests are commensurable. (The
+model's t statistics still run larger than people's - the pooled
+model has one parameter set, so between-subject variance is only
+sampling noise; the gap measures real individual differences the
+model does not carry.)
+
+- **9a oculomotor suppression** (three item types, people vs
+  model): suppression (non-singleton minus singleton) people 7.1%,
+  t(65) = 10.79, p < .001, pingouin d 1.21; model 6.4%,
+  t(65) = 20.37, p < .001. Model rates
+  (target/non-singleton/singleton): 43.9/13.5/7.1 (per-subject
+  means).
+- **9b salience gradient, counterfactual design (Han's)**: the
+  real trials ARE the high-salience condition (green target, red
+  singleton; 9a's regenerated saccades). A second pass re-senses
+  the SAME trials with a TEAL singleton (near the target color =
+  low salience), keeps each subject's real history, and
+  regenerates saccades (model_F gained an optional
+  alternative-senses argument). Model only, per Han - people
+  appear in the text (7.0 vs 11.3, full battery). Suppression 6.4%
+  (red) vs 1.1% (teal); salience x item-type interaction, 2 x 2
+  rm-ANOVA over subjects: F(1, 65) = 134.4, p < .001. Condition
+  means t/ns/s: high 43.9/13.5/7.1, low 41.2/13.0/11.9. This
+  supersedes the notebook's zero-history probability battery (the
+  schematic 8-pair and one-pair versions); the full 8-pair
+  probability battery remains the script record
+  (stilwell_salience.py: model 7.2/10.6 vs observed 7.0/11.3).
+- **9c target-location priming** (Change vs Repeat bars):
+  people +34.7%, t(65) = 18.55, p < .001, d_z = 2.28; model
+  +39.2%, t(65) = 46.37, d_z = 5.71 (the model slightly
+  over-primes; eta_T = 0.60). The singleton-location panel was
+  removed from the notebook (Han's call); its last numbers, for
+  the record: people -5.2%, t(65) = -5.70, d_z = 0.70; model
+  -3.6%, t(65) = -4.24, d_z = 0.52 - same direction, slightly
+  conservative.
+
+Plotting is seaborn's high-level API throughout Section 9; the
+hand-rolled bootstrap helpers are gone. New notebook dependencies:
+seaborn, pingouin (pip-installed into escaping_ball).
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
