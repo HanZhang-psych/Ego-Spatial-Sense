@@ -8,8 +8,8 @@
 > `pretrained/goal_es2.pth` (formerly
 > `goal_history_geometric_trial_unbiased_360_150_nohist.pth`); the
 > training data is `dataset/data_goal_unbiased_360.csv` (formerly
-> `data_goal_history_cont_unbiased_360.csv`, not committed - regenerate
-> with `expert_goal.py`). Historical sections below keep the file and
+> `data_goal_history_cont_unbiased_360.csv`; committed by Han, and
+> regenerable with `expert_goal.py`). Historical sections below keep the file and
 > checkpoint names that were current when each experiment ran;
 > superseded checkpoints, datasets, and loss logs were removed from the
 > repository. A second cleanup pass (same day, Han's call) removed the
@@ -19,7 +19,16 @@
 > `pretrained/goal_es2.pth`, `goal_mlp.pth`, `goal_transformer.pth` -
 > so every model is trained from scratch (`train_goal_es2.py`,
 > `train_goal_mlp.py`, `train_goal_transformer.py`, or the notebook). The initial-state
-> checkpoints (`es2.pth`, `mlp.pth`, `transformer.pth`) are untouched. The old goal-conditioned model that predated the field
+> checkpoints (`es2.pth`, `mlp.pth`, `transformer.pth`) are untouched.
+> A third pass removed the stale experiment flags from `expert_goal.py`
+> and `evaluate_goal_es2.py`: the quadrant bias (`--goal_bias`,
+> `--bias_p`), the anticipation/drift machinery (`--goal_free_steps`,
+> `--expert_eta`, the trace-driven expert branch and `hist_dx/dy`
+> columns), the fixation-start experiments (`--respawn_center`,
+> `--spawn_from_center`), and the evaluator's quadrant metrics. The
+> historical commands below that use those flags need the pre-cleanup
+> revision; the priming demonstration keeps its own anticipation window
+> inside `evaluate_priming.py`. The old goal-conditioned model that predated the field
 > formulation (`model/goal_es2.py` v1, `pretrained/goal_es2.pth` v1,
 > `evaluate_reach_avoid.py`) was removed with them.
 
@@ -108,8 +117,6 @@ python3 expert_goal.py \
   --num_episodes 20 \
   --max_steps_per_episode 3000 \
   --record_every 5 \
-  --goal_free_steps 0 \
-  --goal_bias none \
   --output dataset/data_goal_unbiased_360.csv
 ```
 
@@ -134,8 +141,6 @@ ablated model):
 ```bash
 python3 evaluate_goal_es2.py \
   --model_path pretrained/goal_es2.pth --disable_history \
-  --goal_bias none \
-  --goal_free_steps 0 \
   --max_steps 6000 \
   --num_seeds 3
 ```
