@@ -423,6 +423,31 @@ combination of a stronger/faster expert drift in the demos, a smaller
 min-spawn distance, or a frequent region positioned so its eligible
 zone is where the trace points.
 
+### min_spawn_dist 150 (2026-09-12): worse for everyone, and no history effect
+
+Same center-referenced staged pipeline with `--min_spawn_dist 150`
+throughout (dataset `data_goal_history_biased_respawn_cs150_360.csv`,
+not committed; expert 1069 goals, 53.45 goals/min):
+
+```text
+                    goals/min   coll/min   free drift   freq/rare steps per 100px   freq/rare reach
+staged history      20.0        8.2        -0.06        53.0 / 24.5                 0.98 / 0.90
+history disabled    19.8        5.7        -0.03        54.6 / 24.7                 0.99 / 0.90
+```
+
+Lowering the spawn floor backfired: BOTH models collapse to ~20
+goals/min (from ~36) while the expert improves to 53.5 - the
+imitation gap triples.  Frequent-region efficiency balloons to ~54
+steps/100px for both models (near goals inflate the normalized metric,
+but ~80 steps for a 150 px goal is genuinely poor control), and the
+staged model's fitted beta_H shrinks to -0.05 with drift ~0: in this
+regime stage 2 finds almost nothing for history to explain that
+survives cloning.  No history benefit, no history cost - the
+bottleneck this variant exposes is near-goal closed-loop control, not
+anticipation.  Conclusion: the spawn floor is not the lever; the
+magnitude shrinkage of the cloned anticipation (and near-goal control
+generally) is where the imitation gap lives.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
