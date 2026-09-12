@@ -20,6 +20,7 @@ def load_tensors(path, num_features, device):
     player = torch.tensor(df[["player_x", "player_y"]].values, dtype=torch.float32, device=device)
     goal_xy = torch.tensor(df[["goal_x", "goal_y"]].values, dtype=torch.float32, device=device)
     spawn = torch.tensor(df["goal_spawn"].values.astype(bool), device=device)
+    goal_present = df["goal_present"].values.astype(bool)
     target = torch.tensor(df[["fx", "fy"]].values, dtype=torch.float32, device=device)
     episode = df["episode"].values
     # a pair that straddles a center respawn would feed the model scans from
@@ -27,7 +28,8 @@ def load_tensors(path, num_features, device):
     respawn = df["respawn"].values if "respawn" in df else [0] * len(df)
     pairs = [i for i in range(len(df) - 1)
              if episode[i] == episode[i + 1] and not respawn[i + 1]]
-    return df, scans, goal, player, goal_xy, spawn, target, torch.tensor(pairs, device=device)
+    return df, scans, goal, player, goal_xy, spawn, goal_present, target, \
+        torch.tensor(pairs, device=device)
 
 
 def build_history_vectors(df, player, goal_xy, spawn, eta, width, height):
@@ -63,11 +65,28 @@ def main():
         action="store_true",
         help="freeze beta_H at 0 so the history field never enters the sum",
     )
+    parser.add_argument(
+        "--train_history_only",
+        action="store_true",
+        help="freeze everything except beta_H, history_gain and raw_eta_H "
+        "(stage 2 of staged training; warm-start from a --disable_history "
+        "checkpoint at --model_path)",
+    )
+    parser.add_argument(
+        "--goal_free_only",
+        action="store_true",
+        help="train only on rows where no goal is visible (the anticipation "
+        "periods, where the trace is the sole driver of expert actions)",
+    )
     args = parser.parse_args()
 
-    df, scans, goal, player, goal_xy, spawn, target, pairs = load_tensors(
+    df, scans, goal, player, goal_xy, spawn, goal_present, target, pairs = load_tensors(
         args.data_path, args.num_features, args.device
     )
+    if args.goal_free_only:
+        keep = ~torch.tensor(goal_present, device=args.device)
+        pairs = pairs[keep[pairs + 1]]
+        print(f"goal-free rows only: {len(pairs)} training pairs")
     model = GoalHistoryEs2Model(
         num_features=args.num_features,
         num_actions=args.num_actions,
@@ -81,6 +100,15 @@ def main():
             model.beta_H.zero_()
         model.beta_H.requires_grad = False
         print("history DISABLED (beta_H frozen at 0)")
+    if args.train_history_only:
+        hist_params = {"beta_H", "raw_eta_H"} | {
+            f"history_gain.{n}" for n, _ in model.history_gain.named_parameters()
+        }
+        n_train = 0
+        for name, prm in model.named_parameters():
+            prm.requires_grad = name in hist_params
+            n_train += prm.numel() if prm.requires_grad else 0
+        print(f"HISTORY-ONLY training: {n_train} trainable parameters")
 
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     criterion = nn.MSELoss()

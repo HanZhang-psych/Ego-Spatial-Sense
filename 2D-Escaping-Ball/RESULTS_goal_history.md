@@ -308,6 +308,42 @@ open question is whether that reflects the channel (geometric trace
 field) or the training method (single-step behavioral cloning with no
 rollout correction, e.g. no DAgger).
 
+### Staged training: freeze the policy, then train only history (2026-09-12)
+
+Han's proposal, exploiting that the history field feeds the same frozen
+planner as the other channels: stage 1 trains everything with history
+disabled (the `_nohist` checkpoint above); stage 2 warm-starts from it,
+freezes all parameters except the history ones (`beta_H`, the
+`history_gain` MLP, `raw_eta_H` - 26 scalars), and trains only on the
+goal-free anticipation rows, where the trace is the sole driver of the
+expert's actions.  New trainer flags: `--train_history_only`,
+`--goal_free_only`.  Stage-2 loss (goal-free rows) 18.0 -> 17.07;
+fitted eta_H 0.060, beta_H -0.081 (sign not interpretable alone - it
+composes with the free-signed gain curve).  Evaluation as before:
+
+```text
+                    goals/min   coll/min   free drift   freq/rare steps per 100px
+history disabled    40.3        6.3        +0.12        17.4 / 15.5
+joint history       21.0        1.3        -0.43        33.9 / 13.9
+staged history      36.0        4.2        +0.59        19.3 / 23.0
+```
+
+Staging rescues the history channel.  The staged model is the first
+with the anticipation signature and near-full competence: drift toward
+the frequent region during goal-free periods (+0.59 px/step - 5x the
+ablated model's residual, opposite in sign to the joint model's), and
+frequent-region goals now reached MORE efficiently than rare ones (19.3
+vs 23.0 steps/100px; every other variant had the advantage absent or
+inverted), at a modest throughput cost (36.0 vs 40.3 goals/min).
+
+Interpretation: joint training lets history gradients reshape the
+planner and destabilize the whole policy; freezing the competent
+policy and letting only the 26 history parameters adapt confines the
+selection-history machinery to the anticipation behavior it is meant
+to explain.  This mirrors the search model's separation between fixed
+salience/goal machinery and the small set of history parameters fitted
+on top.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
