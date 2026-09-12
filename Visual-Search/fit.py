@@ -34,12 +34,11 @@ def main():
     print(f"{len(sacc)} saccades; train/test split by subject")
 
     m = SearchModel()
-    m.raw_sigma.requires_grad_(False)
     opt = torch.optim.Adam([p for p in m.parameters() if p.requires_grad],
                            lr=0.05)
 
     def nll(mask):
-        oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
+        oT, oD = m.compute_traces(tt["eT"], tt["eD"])
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
         F = m.field(A, hT, hD, BH6, BH4, m6)
         F = F.masked_fill(~tt["valid"], -1e9)

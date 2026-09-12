@@ -64,7 +64,6 @@ class SearchModel(nn.Module):
         self.beta_D = nn.Parameter(torch.tensor(-0.1))
         self.raw_eta_T = nn.Parameter(torch.tensor(0.0))
         self.raw_eta_D = nn.Parameter(torch.tensor(0.0))
-        self.raw_sigma = nn.Parameter(torch.tensor(-12.0))  # trace spread (off)
 
     @property
     def eta_T(self):
@@ -74,16 +73,7 @@ class SearchModel(nn.Module):
     def eta_D(self):
         return torch.sigmoid(self.raw_eta_D)
 
-    @property
-    def sigma(self):
-        return nn.functional.softplus(self.raw_sigma)
-
-    def compute_traces(self, eT, eD, dmat=None):
-        if dmat is not None:
-            K = torch.exp(-dmat ** 2 / (2 * self.sigma ** 2 + 1e-8))
-            K = K / K.sum(-1, keepdim=True)
-            eT = torch.einsum("stj,sjk->stk", eT, K)
-            eD = torch.einsum("stj,sjk->stk", eD, K)
+    def compute_traces(self, eT, eD):
         S, T, L = eT.shape
         hT = torch.zeros(S, L)
         hD = torch.zeros(S, L)
@@ -114,8 +104,8 @@ class SearchModel(nn.Module):
         return {n: round(v, 4) for n, v in dict(
             g_C=self.g_C.item(), g_F=self.g_F.item(),
             beta_T=self.beta_T.item(), beta_D=self.beta_D.item(),
-            eta_T=self.eta_T.item(), eta_D=self.eta_D.item(),
-            sigma=self.sigma.item()).items()}
+            eta_T=self.eta_T.item(),
+            eta_D=self.eta_D.item()).items()}
 
     def load_values(self, w):
         import numpy as np

@@ -38,14 +38,7 @@ import pandas as pd
 from front_end import (COLORS, IMG, _gauss_blur, item_positions,
                        render, shape_for)
 
-OPPONENT = {"green": "red", "red": "green", "blue": "orange",
-            "orange": "blue", "pink": "teal", "teal": "pink"}
-COLORS.setdefault("orange", (0.95, 0.55, 0.05))
 
-
-
-def valid_color(c):
-    return isinstance(c, str) and c in COLORS
 
 
 def normalize_colors(sacc):

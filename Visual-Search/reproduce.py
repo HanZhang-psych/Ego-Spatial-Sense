@@ -23,7 +23,7 @@ from model import load_final
 
 def model_probs(m, sacc, tt, A, BH6, BH4):
     with torch.no_grad():
-        oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
+        oT, oD = m.compute_traces(tt["eT"], tt["eD"])
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
         m6 = torch.tensor((sacc.setsize == 6).values)
         F = m.field(A, hT, hD, BH6, BH4, m6)

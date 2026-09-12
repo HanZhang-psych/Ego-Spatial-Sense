@@ -10,62 +10,66 @@ implemented and fitted in `Visual-Search/` (RESULTS.md there); the
 action instantiation and its diagnostics live in `2D-Escaping-Ball/`
 (see `README_reach_avoid.md`, `RESULTS_reach_avoid.md`).
 
-**Final model of record (search side), one sentence:** scoped to the
-FIRST saccade of each trial (launched from central fixation), one
-priority map assembled from minimal goal-weighted evidence —
-g_C·D_T(x), a SINGLE SIGNED gain on the template-axis color
-contrast (adopted 2026-09-11: one parameter lifts goal-colored
-locations and depresses opposite-colored ones together; the earlier
-two-gain rectified split - "pure enhancement" g_T / "pure
-suppression" g_D - is unidentified in two-color displays, the
-g_T/g_D ridge in RESULTS, and all forms fit identically) — plus
-the pixel-derived template-shape map and the two world-anchored
-leaky location traces rendered as a HISTORY FIELD (each item's
-trace value placed at its location, smoothed by a fixed sigma=0.03
-kernel with PEAK HEIGHT 1 — a stated assumption; the peak
-convention is the point-readout dual of fixed mass: a fully primed
-own location senses as exactly beta, and sigma sets spread only). All of it forms ONE pre-window
-priority map over the display; the readout has NO attention window (removed 2026-09-12,
-Han's call): in first-fixation scope, with every item equidistant
-from central fixation, an ego-anchored window multiplies all
-sensed priorities by one shared scalar the gains absorb — fits
-with the window inside, outside, and absent are exactly identical
-(RESULTS), so the window is a stated theoretical construct outside
-the fitted model, testable only with eccentricity variation or
-peripheral fixations. The readout
-SENSES the priority map at each item's center — F_i = P(x_i), six
-point samples across six directions, like a per-ray range sensor
-(adopted 2026-09-11 over the sector average; CORRECTED matched-split
-comparison: point 1.37599/1.39774 vs pool-then-relu binned
-1.36524/1.39026 on the 66-/67-subject splits - the binned form
-predicts ~0.01 NLL/saccade better, the point form is the best
-construction faithful to the pixel-relu map-first spec; adoption
-flagged for re-decision in RESULTS; implemented exactly through a
-cache of sensed channel values). With iso-eccentric items a window's weight at the
-sensed points would be one shared scalar — a pure softmax
-temperature — which is why the fitted model carries none; no IoR term
-(unidentifiable before the second saccade); softmax over the sector
-averages; nine fitted weights. In this construction g_D fits to ~0:
-suppression is carried by relegation plus location history (see
-RESULTS, "One construction everywhere"). The narrowed scope
-dissolves the shape-gating fork (one vantage point makes gated and
-ungated reparameterizations); the earlier all-saccade tests of that
-fork are preserved in RESULTS. The
-shape channel is pixel-derived: displays are reconstructed
-canonically (target = circle, green items, red singleton — each
+**Final model of record (search side) — the six-parameter form
+(2026-09-12):** scoped to the FIRST saccade of each trial (launched
+from central fixation). One priority map, sensed at the item
+centers, softmaxed:
+
+    M(x)  = g_C * D_T(x) + g_F * S(x)
+            + sum_j (beta_T h_Tj + beta_D h_Dj) * G(x - x_j)
+    F_i   = M(x_i)                    (point-sensing readout)
+    P(i)  = softmax(F)_i
+    h    <- (1 - eta) h + eta e       (leaky accumulators, per trial)
+
+- **g_C** — one SIGNED gain on the template-axis color contrast
+  D_T: lifts goal-colored locations and depresses opposite-colored
+  ones together. It is the identified NET goal modulation: two-color
+  displays cannot separate enhancement from suppression (the g_T/g_D
+  ridge; the two-gain rectified split fits identically while its
+  division wanders).
+- **g_F** — gain on the pixel-derived template-shape map S
+  (discriminative normalized cross-correlation: circle NCC minus the
+  best competing shape's).
+- **beta_T, beta_D** — gains on the two world-anchored leaky
+  location traces, rendered as a history FIELD: each item's trace
+  painted at its location by a fixed sigma = 0.03 kernel with PEAK
+  HEIGHT 1 (a stated assumption; the peak convention is the
+  point-readout dual of fixed mass — a fully primed own location
+  senses as exactly beta).
+- **eta_T, eta_D** — the memory speeds of those traces.
+
+Fitted values: g_C +0.226, g_F +0.498, beta_T +2.13, beta_D -0.49,
+eta_T 0.60, eta_D 0.16; held-out NLL 1.39749 (script split) /
+1.37415 (notebook split). Every parameter is identified and
+sign-interpretable.
+
+What the fitted model does NOT carry, each absence priced on
+held-out data (ledger: `Visual-Search/RESULTS.md`):
+
+- **No attention window** (removed 2026-09-12): with every item
+  equidistant from central fixation, an ego-anchored window
+  multiplies all sensed priorities by one shared scalar the gains
+  absorb — fits with the window inside, outside, and absent are
+  exactly identical. The window remains a theoretical construct of
+  the framework (Sec. 1.1), testable only with eccentricity
+  variation or peripheral fixations.
+- **No IoR term** (unidentifiable before the second saccade).
+- **No separate suppression gain** (the ridge, above).
+- **No transient/motion channel** (static displays; Sec. 7).
+
+The readout SENSES the map at the six item centers like a per-ray
+range sensor (adopted 2026-09-11 over the sector average; the
+pool-then-relu binned form predicts ~0.01 NLL/saccade better on
+matched splits but dissolves the pixel-level map the theory is
+about — the trade is on record). Displays are reconstructed
+canonically (target = circle, green items, red singleton; each
 subject's template and colors were fixed all session, so only
-match/mismatch structure matters) and shape evidence is a
-discriminative normalized cross-correlation (circle NCC minus the
-best competing shape's). Disclosed limit: the data never record item
+match/mismatch structure matters); the data never record item
 shapes, so the reconstruction places the circle at targLoc by
-construction — the pixel channel makes the pathway realistic, not
-the display's provenance, and its fit sat within 0.005 of the
-analytic label when both were tested (all-saccade era, 1.2376 vs
-1.2333; the scoped first-fixation numbers live in RESULTS). Every structural choice (traces, IoR,
-goal-early assembly, window form, history ordering, the dropped
-presence and salience channels, the kept shape term, the
-rectification placement) was decided or priced by held-out
-comparison; the ledger is `Visual-Search/RESULTS.md`.
+construction — the pixel shape channel makes the pathway realistic,
+not the display's provenance. Every structural choice was decided
+or priced by held-out comparison; the ledger is
+`Visual-Search/RESULTS.md`.
 
 ## 1. Master equation
 
