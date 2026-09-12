@@ -18,7 +18,7 @@
 > below stand as record) and ALL committed goal-model checkpoints -
 > `pretrained/goal_es2.pth`, `goal_mlp.pth`, `goal_transformer.pth` -
 > so every model is trained from scratch (`train_goal_es2.py`,
-> `train_goal_baseline.py`, or the notebook). The initial-state
+> `train_goal_mlp.py`, `train_goal_transformer.py`, or the notebook). The initial-state
 > checkpoints (`es2.pth`, `mlp.pth`, `transformer.pth`) are untouched. The old goal-conditioned model that predated the field
 > formulation (`model/goal_es2.py` v1, `pretrained/goal_es2.pth` v1,
 > `evaluate_reach_avoid.py`) was removed with them.
