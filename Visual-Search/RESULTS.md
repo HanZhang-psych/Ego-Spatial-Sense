@@ -1064,6 +1064,22 @@ net singleton-suppression gain. Recommendation on the table: adopt
 g_T = 0 as a stated identifiability constraint (8 free parameters,
 all interpretable) - pending Han.
 
+## Single signed goal-color gain: a three-way tie (Han's request)
+
+The additive one-parameter form - color term g_C * D_T(x), the
+SIGNED template-axis contrast, no rectifiers in the color pathway -
+fitted with the same recipe/split/epochs: held-out NLL 1.39749 vs
+1.39774 (two rectified gains, free) vs 1.39677 (g_T = 0 clamp).
+All three within 0.001/saccade (~23 total): a statistical tie, as
+the ridge predicted. The signed fit is the cleanest: g_C = +0.230
+(positive - the goal tilts salience toward the template axis),
+g_F 0.51, beta 2.16/-0.50, eta 0.60/0.16 - the history structure
+is entirely insensitive to the color parameterization.
+Recommendation pending Han: adopt signed g_C as parameterization of
+record (every parameter identified and sign-interpretable; the
+enhancement-vs-suppression split becomes a stated limit of
+two-color paradigms rather than two model parameters).
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
