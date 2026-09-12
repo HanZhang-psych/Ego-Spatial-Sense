@@ -45,7 +45,7 @@ def model_probs(m, sacc, tt, P, FP, HM6, HM4):
 def gaspelin(m):
     sacc, ev = data.load_frames()
     sacc, tt = data.build_tensors(sacc, ev)
-    ctx = np.load("dataset/contexts_v21.npz")
+    ctx = np.load("dataset/contexts.npz")
     cid = torch.tensor(sacc.ctx.values.astype(int))
     P, FP = torch.tensor(ctx["P"])[cid], torch.tensor(ctx["FORMP"])[cid]
     prob = model_probs(m, sacc, tt, P, FP,

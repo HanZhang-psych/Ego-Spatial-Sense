@@ -15,7 +15,7 @@ Color fallbacks: junk/NaN targCol -> the subject's modal valid value,
 else green; missing singCol on singleton-present trials -> the
 opponent of the target color.
 
-Output: dataset/contexts_v21.npz (profiles P [ctx, 6, NBINS, 3]:
+Output: dataset/contexts.npz (profiles P [ctx, 6, NBINS, 3]:
 template axis D_T, orthogonal D_O, presence D_P; FORM [ctx, 6]; range
 R [ctx, 6]) + dataset/saccades_ctx.csv (saccades with ctx ids).
 
@@ -265,13 +265,13 @@ def main():
     P[..., :2] /= max(np.abs(P[..., :2]).std(), 1e-9)
     P[..., 2] /= max(P[..., 2].std(), 1e-9)
     FP /= max(FP.std(), 1e-9)
-    np.savez_compressed("dataset/contexts_v21.npz", P=P, FORMP=FP,
+    np.savez_compressed("dataset/contexts.npz", P=P, FORMP=FP,
                         HM6=history_matrix(6), HM4=history_matrix(4))
     merged = sacc.merge(keys, on=["setsize", "targLoc", "singLoc",
                                   "targCol", "singCol", "fixloc"], how="left")
     assert merged.ctx.notna().all()
     merged.to_csv("dataset/saccades_ctx.csv", index=False)
-    print(f"saved contexts_v21.npz + saccades_ctx.csv "
+    print(f"saved contexts.npz + saccades_ctx.csv "
           f"({n} contexts, {len(cache)} unique displays)")
 
 
