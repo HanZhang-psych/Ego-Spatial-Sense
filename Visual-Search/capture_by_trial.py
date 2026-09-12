@@ -12,8 +12,8 @@ S = np.load("dataset/senses.npz")
 cid = torch.tensor(sacc.ctx.values.astype(int))
 A = torch.tensor(S["A"])[cid]
 prob = reproduce.model_probs(m, sacc, tt, A,
-                             torch.tensor(S["BH6"]), torch.tensor(S["BH4"]),
-                             torch.tensor(S["D6"]), torch.tensor(S["D4"])).numpy()
+                             torch.tensor(S["BH6"]),
+                             torch.tensor(S["BH4"])).numpy()
 _, test = data.subject_split(tt)
 held = test.numpy()
 

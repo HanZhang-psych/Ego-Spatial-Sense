@@ -29,7 +29,6 @@ def main():
     cid = torch.tensor(sacc.ctx.values.astype(int))
     A = torch.tensor(S["A"])[cid]
     BH6, BH4 = torch.tensor(S["BH6"]), torch.tensor(S["BH4"])
-    D6, D4 = torch.tensor(S["D6"]), torch.tensor(S["D4"])
     m6 = torch.tensor((sacc.setsize == 6).values)
     train, test = data.subject_split(tt)
     print(f"{len(sacc)} saccades; train/test split by subject")
@@ -42,7 +41,7 @@ def main():
     def nll(mask):
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(A, hT, hD, BH6, BH4, m6, D6, D4)
+        F = m.field(A, hT, hD, BH6, BH4, m6)
         F = F.masked_fill(~tt["valid"], -1e9)
         lp = torch.log_softmax(F, 1).gather(1, tt["choice"][:, None]).squeeze(1)
         return -lp[mask].mean()

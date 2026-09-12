@@ -25,10 +25,14 @@ trace value placed at its location, smoothed by a fixed sigma=0.03
 kernel with PEAK HEIGHT 1 — a stated assumption; the peak
 convention is the point-readout dual of fixed mass: a fully primed
 own location senses as exactly beta, and sigma sets spread only). All of it forms ONE pre-window
-priority map over the display; the ego-anchored sigmoid attention
-window multiplies that map pixel by pixel (in scope the fitted
-window is flat — r0 beyond the display — a shared gain kept on
-theoretical definition, not data constraint), and the readout
+priority map over the display; the readout has NO attention window (removed 2026-09-12,
+Han's call): in first-fixation scope, with every item equidistant
+from central fixation, an ego-anchored window multiplies all
+sensed priorities by one shared scalar the gains absorb — fits
+with the window inside, outside, and absent are exactly identical
+(RESULTS), so the window is a stated theoretical construct outside
+the fitted model, testable only with eccentricity variation or
+peripheral fixations. The readout
 SENSES the priority map at each item's center — F_i = P(x_i), six
 point samples across six directions, like a per-ray range sensor
 (adopted 2026-09-11 over the sector average; CORRECTED matched-split
@@ -37,10 +41,9 @@ comparison: point 1.37599/1.39774 vs pool-then-relu binned
 predicts ~0.01 NLL/saccade better, the point form is the best
 construction faithful to the pixel-relu map-first spec; adoption
 flagged for re-decision in RESULTS; implemented exactly through a
-cache of sensed channel values). With iso-eccentric items the window's weight at the
-sensed points is one shared scalar — a pure softmax temperature —
-so k, r0 are exactly unidentifiable in scope and stay on
-theoretical definition; no IoR term
+cache of sensed channel values). With iso-eccentric items a window's weight at the
+sensed points would be one shared scalar — a pure softmax
+temperature — which is why the fitted model carries none; no IoR term
 (unidentifiable before the second saccade); softmax over the sector
 averages; nine fitted weights. In this construction g_D fits to ~0:
 suppression is carried by relegation plus location history (see

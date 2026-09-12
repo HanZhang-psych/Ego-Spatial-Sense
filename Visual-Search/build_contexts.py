@@ -26,8 +26,7 @@ All displays use the canonical green-target / red-singleton scheme
 Output: dataset/senses.npz -- A [ctx, 6, 2] (sensed channels: the
 SIGNED template-axis color contrast D_T and the shape match;
 divided by NORM, the per-channel std over unique displays),
-NORM [3], BH6/BH4 [6, 6] (sensed history kernel per set size),
-D6/D4 [6] (sensed distances from fixation). Plus
+NORM [3], BH6/BH4 [6, 6] (sensed history kernel per set size). Plus
 dataset/saccades_ctx.csv (saccades with ctx ids).
 
 Usage: python build_contexts.py
@@ -215,15 +214,6 @@ def kernel_matrix(setsize):
     return BH
 
 
-def item_distances(setsize):
-    """Each sensed center's distance from central fixation, in display
-    units (~0.5 on the ring; padded with 0.5 beyond setsize)."""
-    cs = item_centers(setsize)
-    d = [float(np.hypot(px - IMG / 2, py - IMG / 2) / (IMG / 1.5))
-         for py, px in cs]
-    return np.array(d + [0.5] * (6 - setsize), dtype=np.float32)
-
-
 def main():
     sacc = pd.read_csv("dataset/saccades.csv", low_memory=False)
     sacc = normalize_colors(sacc)
@@ -246,8 +236,7 @@ def main():
     norm = np.stack(list(cache.values())).reshape(-1, 2).std(0)
     A /= norm
     np.savez_compressed("dataset/senses.npz", A=A, NORM=norm,
-                        BH6=kernel_matrix(6), BH4=kernel_matrix(4),
-                        D6=item_distances(6), D4=item_distances(4))
+                        BH6=kernel_matrix(6), BH4=kernel_matrix(4))
     merged = sacc.merge(keys, on=["setsize", "targLoc", "singLoc",
                                   "targCol", "singCol", "fixloc"], how="left")
     assert merged.ctx.notna().all()

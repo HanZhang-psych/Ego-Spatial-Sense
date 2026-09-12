@@ -1139,6 +1139,38 @@ window - now demonstrated exactly (completing the flat-window
 notes above), not because these data constrain one. Testing the
 window needs eccentricity variation or peripheral fixations.
 
+## FINAL FORM OF RECORD: six parameters, no attention window
+## (adopted, Han's call, 2026-09-12)
+
+The attention window is REMOVED from the model of record, following
+the exact-tie demonstrations above. The complete model:
+
+  M(x)  = g_C * D_T(x) + g_F * S(x)
+          + sum_j (beta_T h_Tj + beta_D h_Dj) * G(x - x_j)
+  F_i   = M(x_i)                       (sensed at item centers)
+  P(i)  = softmax(F)_i
+  h    <- (1 - eta) h + eta e          (leaky accumulators)
+
+Six parameters, every one identified and sign-interpretable:
+g_C +0.226 (net goal-color modulation), g_F +0.498 (goal shape),
+beta_T +2.13 / beta_D -0.49 (history pull/push), eta_T 0.60 /
+eta_D 0.16 (memory speeds). G is the fixed sigma = 0.03 peak-1
+kernel (stated assumption).
+
+Fits: script split held-out NLL 1.39749; notebook split 1.37415 -
+both identical to the windowed forms (1.39750 / 1.37416), as the
+scope algebra requires. Batteries identical: suppression
+42.7/7.4/13.0 (obs 40.3/6.8/13.7); priming 74.7/35.6 and 4.4/7.8;
+Stilwell gradient 7.2/10.6 vs observed 7.0/11.3 (full battery).
+
+Notebook restructured: Sec. 6 is now "Where did the attention
+window go?" (the scope argument + the three tie entries); the
+model is two functions, priority_map -> predict_saccade; the
+window code, k/r0, and the sigmoid helper are gone from notebook
+and pipeline alike. The ego-anchored window remains a theoretical
+construct OUTSIDE the fitted model, testable only with
+eccentricity variation or peripheral fixations.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

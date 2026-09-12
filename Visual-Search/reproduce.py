@@ -21,12 +21,12 @@ import data
 from model import load_final
 
 
-def model_probs(m, sacc, tt, A, BH6, BH4, D6, D4):
+def model_probs(m, sacc, tt, A, BH6, BH4):
     with torch.no_grad():
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
         m6 = torch.tensor((sacc.setsize == 6).values)
-        F = m.field(A, hT, hD, BH6, BH4, m6, D6, D4)
+        F = m.field(A, hT, hD, BH6, BH4, m6)
         F = F.masked_fill(~tt["valid"], -1e9)
         return torch.softmax(F, 1)
 
@@ -38,8 +38,7 @@ def gaspelin(m):
     cid = torch.tensor(sacc.ctx.values.astype(int))
     A = torch.tensor(S["A"])[cid]
     prob = model_probs(m, sacc, tt, A,
-                       torch.tensor(S["BH6"]), torch.tensor(S["BH4"]),
-                       torch.tensor(S["D6"]), torch.tensor(S["D4"]))
+                       torch.tensor(S["BH6"]), torch.tensor(S["BH4"]))
     _, test = data.subject_split(tt)
     held = test.numpy()
 
