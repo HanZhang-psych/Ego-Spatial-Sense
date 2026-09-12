@@ -224,6 +224,33 @@ out-of-distribution crowding: paths lengthen (~30 steps/100px vs ~12.6
 at 10 balls) and the obstacle field frequently saturates with no safe
 gap toward the goal.
 
+## Adversarial test: seeded pursuer (2026-09-12)
+
+`evaluate_adversarial_goal_history.py` transplants the stressor of
+`evaluate_adversarial.py` (which serves the goal-blind escape models and
+cannot consume this model's goal/history input) into the continuous goal
+task: at a seeded trigger (5-30 s window), one ball switches to erratic
+pursuit of the ego — homing heading with ±0.6 rad noise, speed equal to
+the ego's max so escape stays possible.  Metrics are goals/min and
+collisions/min split at the trigger.  Model of record, 3 seeds x 6,000
+steps, 10 balls:
+
+```text
+before pursuit: 64.8 goals/min,  0.0 collisions/min (mean 511 steps/seed)
+during pursuit:  8.1 goals/min, 19.5 collisions/min (mean 5489 steps/seed)
+```
+
+Under pursuit the model collapses: throughput drops ~8x and the pursuer
+catches it ~20 times/min (each sustained contact counts once).  Expected,
+and diagnostic: the policy is pure imitation of a goal-seeking expert
+that never faced a pursuer, so it treats the hunter as an ordinary
+obstacle to skirt while pressing toward the goal — it has no flee
+behavior and no concept of a threat worth abandoning the goal for.  The
+original ES2 escape models handle this stressor because escaping is all
+they do; the goal model shows the complementary failure.  A future
+goal-vs-threat arbitration (e.g. a negatively-weighted looming channel
+strong enough to override the goal field) is the obvious fix.
+
 ## Notes
 
 - The evaluation task uses unbiased target sampling.
