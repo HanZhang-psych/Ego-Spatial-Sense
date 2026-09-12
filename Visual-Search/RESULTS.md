@@ -1048,6 +1048,22 @@ probe did NOT fix it (canonical fit identical at 1.39774; exact-
 color gradient still inverted) - the schematic-color scoping is a
 stated limitation, not a solvable calibration.
 
+## The g_T/g_D ridge, confirmed by a clamped refit (Han's request)
+
+Under point sensing in two-color displays the two color channels
+are near-complementary singleton indicators, so only the
+combination -g_T*c_T - g_D*c_D (the net singleton weight) is
+identified; the free fit's g_T -1.14 / g_D +1.15 is one arbitrary
+point on that ridge. Check: refit with g_T FROZEN AT 0 (same
+recipe, split, epochs). Result: held-out NLL 1.39677 vs 1.39774
+free - the clamp is marginally BETTER out of sample while train is
+slightly worse (1.41577 vs 1.41166): the freed dimension was
+fitting training noise. Everything else lands unchanged (g_F 0.51,
+beta 2.18/-0.51, eta 0.60/0.16); g_D becomes +0.237, the single
+net singleton-suppression gain. Recommendation on the table: adopt
+g_T = 0 as a stated identifiability constraint (8 free parameters,
+all interpretable) - pending Han.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
