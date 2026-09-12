@@ -928,6 +928,34 @@ window at bin resolution; pixel-vs-table demo gap ~62% vs ~50%
 target probability); migrating the full pipeline to the exact
 per-display pixel cache is the open next step.
 
+## Full-scale refit through the exact cache: pixel relu fits WORSE
+
+Sec. 8 of the notebook now trains ONLY through the exact cache
+(unit-gain combined_map calls per display; window per pixel each
+epoch; verified 0.0 against the literal model on a trial; one unit
+convention - per-channel std - documented in place). The binned
+tables and contexts.npz are gone from the notebook. Full refit,
+all 114,232 saccades, same split:
+
+- exact pixel model: held-out NLL 1.43014, pseudo-R2 0.182,
+  top-1 43.8%; eta_D 0.007, beta_D -7.7; window flat (r0 2.1).
+- binned-era record: 1.39041, pseudo-R2 0.219, top-1 46.8%;
+  eta_D 0.155, beta_D -1.08.
+
+A warm-start probe (eta_D reset to 0.15, beta_D to -1.5, 300 more
+epochs) converged BACK to the slow-eta_D valley (0.011 / -5.7,
+test 1.42854, window r0 0.61 nearly tied with the flat cold fit) -
+so this is the pixel model's genuine optimum, not an optimization
+artifact. Reading: rectifying at pixel resolution commits to noisy
+sign boundaries in the opponency channels, while the old tables'
+relu-after-area-averaging pooled the signed contrast first - an
+accidental denoiser worth ~0.04 NLL/saccade (~930 total) and a
+faster distractor memory. Open modeling choice for the spec:
+(a) keep the clean pixel construction (1.430 becomes the number of
+record), or (b) promote rectify-after-pooling to a stated model
+assumption and keep 1.390. Stilwell ordering survives either way
+(4.9/8.7 model vs 7.1/11.4 observed under the pixel fit).
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
