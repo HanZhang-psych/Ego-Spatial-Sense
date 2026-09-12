@@ -1,4 +1,4 @@
-"""Train GoalHistoryEs2Model on ordered goal-history demonstrations."""
+"""Train GoalEs2Model on ordered goal demonstrations."""
 
 import argparse
 import csv
@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from model.goal_history_es2 import GoalHistoryEs2Model
+from model.goal_es2 import GoalEs2Model
 
 
 def load_tensors(path, num_features, device):
@@ -49,9 +49,9 @@ def build_history_vectors(df, player, goal_xy, spawn, eta, width, height):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="dataset/data_goal_history.csv")
-    parser.add_argument("--model_path", type=str, default="pretrained/goal_history_es2.pth")
-    parser.add_argument("--log_path", type=str, default="loss_goal_history_es2.csv")
+    parser.add_argument("--data_path", type=str, default="dataset/data_goal_unbiased_360.csv")
+    parser.add_argument("--model_path", type=str, default="pretrained/goal_es2.pth")
+    parser.add_argument("--log_path", type=str, default="loss_goal_es2.csv")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--num_features", type=int, default=360)
     parser.add_argument("--num_actions", type=int, default=2)
@@ -87,7 +87,7 @@ def main():
         keep = ~torch.tensor(goal_present, device=args.device)
         pairs = pairs[keep[pairs + 1]]
         print(f"goal-free rows only: {len(pairs)} training pairs")
-    model = GoalHistoryEs2Model(
+    model = GoalEs2Model(
         num_features=args.num_features,
         num_actions=args.num_actions,
         sensing_range=args.sensing_range,

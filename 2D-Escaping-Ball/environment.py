@@ -1,9 +1,9 @@
-"""Shared environment code for the goal-directed reach-avoid variant.
+"""The environment: world, dynamics, sensing, goals, and the scripted expert.
 
 Keeps the moving-ball dynamics and 360-ray LiDAR of evaluate.py, and adds a
 destination (goal) the ego must reach while avoiding the balls.  Used by
-expert_goal.py (demonstration generation), evaluate_reach_avoid.py
-(closed-loop evaluation) and goal_swap_probe.py (goal-swap diagnostic).
+expert_goal.py (demonstration generation), evaluate_goal_es2.py and
+evaluate_priming.py (closed-loop evaluation), and the tutorial notebook.
 """
 
 import math

@@ -11,7 +11,7 @@ import csv
 import math
 import random
 
-from reach_avoid_common import (
+from environment import (
     GOAL_RADIUS,
     CollisionTracker,
     expert_goal_action,
@@ -149,7 +149,7 @@ def main():
         action="store_true",
         help="teleport the player to the center at the start of every goal cycle",
     )
-    parser.add_argument("--output", type=str, default="dataset/data_goal_history.csv")
+    parser.add_argument("--output", type=str, default="dataset/data_goal_unbiased_360.csv")
     args = parser.parse_args()
 
     random.seed(args.random_seed)

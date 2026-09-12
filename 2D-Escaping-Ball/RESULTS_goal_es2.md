@@ -1,11 +1,34 @@
-# Goal-History Reach-Avoid Results
+# Goal-ES2 Results
+
+> **Renamed 2026-09-12** (codebase consolidation): the model is now
+> `GoalEs2Model` in `model/goal_es2.py` (formerly `GoalHistoryEs2Model`
+> in `model/goal_history_es2.py`); scripts are `expert_goal.py`,
+> `train_goal_es2.py`, `evaluate_goal_es2.py`, `evaluate_priming.py`,
+> `evaluate_adversarial_goal_es2.py`; the model-of-record checkpoint is
+> `pretrained/goal_es2.pth` (formerly
+> `goal_history_geometric_trial_unbiased_360_150_nohist.pth`); the
+> training data is `dataset/data_goal_unbiased_360.csv` (formerly
+> `data_goal_history_cont_unbiased_360.csv`, not committed - regenerate
+> with `expert_goal.py`). Historical sections below keep the file and
+> checkpoint names that were current when each experiment ran;
+> superseded checkpoints, datasets, and loss logs were removed from the
+> repository. A second cleanup pass (same day, Han's call) removed the
+> adversarial testing track (`evaluate_adversarial*.py`,
+> `sweep_adversarial.py`, `README_adversarial.md`; the pursuer results
+> below stand as record) and ALL committed goal-model checkpoints -
+> `pretrained/goal_es2.pth`, `goal_mlp.pth`, `goal_transformer.pth` -
+> so every model is trained from scratch (`train_goal_es2.py`,
+> `train_goal_baseline.py`, or the notebook). The initial-state
+> checkpoints (`es2.pth`, `mlp.pth`, `transformer.pth`) are untouched. The old goal-conditioned model that predated the field
+> formulation (`model/goal_es2.py` v1, `pretrained/goal_es2.pth` v1,
+> `evaluate_reach_avoid.py`) was removed with them.
 
 This note records the direct-geometric goal/history experiment for the
 trial-based reach-avoid task.
 
 ## Model
 
-The final model is `GoalHistoryEs2Model` in `model/goal_history_es2.py`.
+The final model is `GoalEs2Model` in `model/goal_es2.py`.
 It keeps the original ES2 LiDAR pathway as the obstacle-perception module,
 then adds direct geometric fields for the visible goal and the world-space
 history trace:
@@ -80,23 +103,24 @@ Run commands from `2D-Escaping-Ball/`.
 Generate the full 360-ray unbiased demonstration dataset:
 
 ```bash
-python3 expert_goal_history.py \
+python3 expert_goal.py \
   --num_features 360 \
   --num_episodes 20 \
   --max_steps_per_episode 3000 \
   --record_every 5 \
   --goal_free_steps 0 \
   --goal_bias none \
-  --output dataset/data_goal_history_cont_unbiased_360.csv
+  --output dataset/data_goal_unbiased_360.csv
 ```
 
 Train the 360-ray geometric goal/history model:
 
 ```bash
-python3 train_goal_history_es2.py \
-  --data_path dataset/data_goal_history_cont_unbiased_360.csv \
-  --model_path pretrained/goal_history_geometric_trial_unbiased_360_150.pth \
-  --log_path loss_goal_history_geometric_trial_unbiased_360_150.csv \
+python3 train_goal_es2.py \
+  --data_path dataset/data_goal_unbiased_360.csv \
+  --model_path pretrained/goal_es2.pth \
+  --log_path loss_goal_es2.csv \
+  --disable_history \
   --num_features 360 \
   --num_epochs 150 \
   --device cpu
@@ -108,8 +132,8 @@ goal spawns the next one, no resets; add `--disable_history` for the
 ablated model):
 
 ```bash
-python3 evaluate_goal_history.py \
-  --model_path pretrained/goal_history_geometric_trial_unbiased_360_150.pth \
+python3 evaluate_goal_es2.py \
+  --model_path pretrained/goal_es2.pth --disable_history \
   --goal_bias none \
   --goal_free_steps 0 \
   --max_steps 6000 \

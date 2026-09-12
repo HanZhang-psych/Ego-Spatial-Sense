@@ -6,15 +6,15 @@ import random
 
 import torch
 
-from model.goal_history_es2 import GoalHistoryEs2Model
-from reach_avoid_common import (
+from model.goal_es2 import GoalEs2Model
+from environment import (
     GOAL_RADIUS,
     CollisionTracker,
     lidar_scan,
     make_world,
     sample_goal,
 )
-from expert_goal_history import QUAD, sample_goal_biased
+from expert_goal import QUAD, sample_goal_biased
 
 
 def in_quad(goal):
@@ -116,7 +116,7 @@ def run_seed(model, args, seed):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, default="pretrained/goal_history_es2.pth")
+    parser.add_argument("--model_path", type=str, default="pretrained/goal_es2.pth")
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--num_features", type=int, default=360)
     parser.add_argument("--num_actions", type=int, default=2)
@@ -156,7 +156,7 @@ def main():
     )
     args = parser.parse_args()
 
-    model = GoalHistoryEs2Model(
+    model = GoalEs2Model(
         num_features=args.num_features,
         num_actions=args.num_actions,
         sensing_range=args.sensing_range,
