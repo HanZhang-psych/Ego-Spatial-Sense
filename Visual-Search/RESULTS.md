@@ -911,6 +911,23 @@ set-size-6 studies alone predict the set-size-4 study almost
 perfectly out-of-sample. Hamblin stays in the pool: it costs
 nothing and the same nine parameters transfer across set size.
 
+## The cache made exact: same fit as the literal loop (Han's request)
+
+Sec. 8 of the notebook now trains priority_map()/predict_saccade()
+literally (no caching, ~60 ms/saccade), and a second cell repeats
+the identical fit through a FIXED cache: combined_map called once
+per unit gain per display (the map is linear in the gains), the six
+painted unit bumps from selection_history_map, window rebuilt each
+epoch at full pixel resolution, readout still predict_saccade. Same
+150-saccade subsample, same init, same Adam: max |loss difference|
+across 60 epochs 7.0e-07, learned parameters identical to 3
+decimals. This retires the old worry in principle - a cache CAN be
+a lossless compression of the pixel model. The full-scale tables
+(contexts.npz) still use the legacy bin-level shortcut (relu and
+window at bin resolution; pixel-vs-table demo gap ~62% vs ~50%
+target probability); migrating the full pipeline to the exact
+per-display pixel cache is the open next step.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
