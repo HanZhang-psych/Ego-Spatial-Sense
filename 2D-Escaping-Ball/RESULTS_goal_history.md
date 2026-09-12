@@ -207,6 +207,23 @@ goal-location structure (e.g. biased or repeating goal locations) where
 history could help.  (The superseded trial-reset evaluation agreed:
 no-history 40.5 mean steps vs with-history 60.4, both 100/100.)
 
+## Stress test: 40 balls (2026-09-12)
+
+The model of record (no-history checkpoint, `--disable_history`) under
+the same continuous protocol but with `--num_balls 40` — 4x the training
+density of 10:
+
+```text
+40 balls: 25.8 goals/min, 6.0 collisions/min
+10 balls: 68.0 goals/min, 0.0 collisions/min
+```
+
+Throughput drops to ~38% and collisions rise from zero to 6/min.  The
+agent was trained entirely at 10-ball density, so this measures
+out-of-distribution crowding: paths lengthen (~30 steps/100px vs ~12.6
+at 10 balls) and the obstacle field frequently saturates with no safe
+gap toward the goal.
+
 ## Notes
 
 - The evaluation task uses unbiased target sampling.
