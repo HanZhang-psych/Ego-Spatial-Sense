@@ -224,6 +224,43 @@ out-of-distribution crowding: paths lengthen (~30 steps/100px vs ~12.6
 at 10 balls) and the obstacle field frequently saturates with no safe
 gap toward the goal.
 
+## Biased-world comparison: history enabled vs disabled (2026-09-12)
+
+Both models trained from scratch (150 epochs) on a quadrant-biased
+demonstration set with anticipation periods —
+`dataset/data_goal_history_cont_biased_360.csv`: 80% of goals in the
+fixed quadrant (140,140)-(400,400), 25 goal-free steps before each spawn
+during which the expert steers toward its trace; expert 823 goals, 0
+collisions, 41.15 goals/min (throughput includes the goal-free waits).
+Evaluated in the matching biased world (3 seeds x 6,000 steps,
+`--goal_free_steps 25`):
+
+```text
+                    train loss   goals/min   coll/min   free drift   freq/rare steps per 100px
+with history        17.03        27.5        28.3       +1.26        27.9 / 21.5
+history disabled    18.35        35.3         1.0       +1.42        23.8 / 12.8
+```
+
+Two findings, both against the history channel here:
+
+1. The with-history model is catastrophically collision-prone (28.3/min
+   vs 1.0) and slower.  Its training loss is lower (17.0 vs 18.3), so
+   the trace helps imitate the expert in-sample, but at rollout the
+   trace-following field apparently drags the agent through traffic it
+   would otherwise skirt — imitation gain, control loss.
+2. The no-history model drifts toward the frequent region during
+   goal-free periods just as strongly (+1.42 px/step) WITHOUT any trace
+   input.  This exposes a confound in the design: the frequent region is
+   at a FIXED world location, and the agent can infer its position in
+   the arena from wall distances in the scans — so the spatial bias is
+   learnable as a static policy prior, no memory required.  A fixed
+   frequent region cannot dissociate selection history (a trace updated
+   by experience) from a learned constant preference.
+
+The dissociating experiment is a frequent region that MOVES between
+episodes (or mid-episode): a static prior then fails, and only a model
+whose trace tracks recent goals can anticipate correctly.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
