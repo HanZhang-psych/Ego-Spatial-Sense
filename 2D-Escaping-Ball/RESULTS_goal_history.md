@@ -58,6 +58,21 @@ curves, not numbers. `beta_H` is the one named scalar (analogous to the
 search model's `beta`s), kept so the history strength stays readable. We
 keep this asymmetric structure deliberately, for simplicity.
 
+How the goal reaches the sensory input also differs between the two
+models, in a precise way. In one sense both do the same thing — convert
+sensed physics into task-signed relevance: the search model's `D_T` takes
+the raw color-contrast the retina delivers and re-signs it by the target
+color, and the agent's goal field takes a sensed physical object (the
+visible goal's distance and bearing) and converts it into signed pull.
+Neither goal conjures evidence from nowhere; both re-weight evidence
+originating in physical stimuli. The residual difference is architectural:
+in the search model the goal modulates a *shared* sensory channel — the
+color-contrast map exists without the goal, which only flips which pole is
+positive — whereas in the agent model the goal object has its own
+dedicated pathway that never passes through the obstacle psychophysics, so
+there is no goal-free version of that channel being modified. Search:
+goal-modulation of a general channel; agent: goal-dedicated transduction.
+
 ## Reproduction
 
 Run commands from `2D-Escaping-Ball/`.
