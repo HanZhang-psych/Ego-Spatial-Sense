@@ -30,10 +30,13 @@ window is flat — r0 beyond the display — a shared gain kept on
 theoretical definition, not data constraint), and the readout
 SENSES the priority map at each item's center — F_i = P(x_i), six
 point samples across six directions, like a per-ray range sensor
-(adopted 2026-09-11 over the sector average: held-out NLL 1.37599
-vs 1.39041 binned / 1.43014 sector-average pixel; implemented
-exactly through a cache of sensed channel values, relu at pixel
-resolution). With iso-eccentric items the window's weight at the
+(adopted 2026-09-11 over the sector average; CORRECTED matched-split
+comparison: point 1.37599/1.39774 vs pool-then-relu binned
+1.36524/1.39026 on the 66-/67-subject splits - the binned form
+predicts ~0.01 NLL/saccade better, the point form is the best
+construction faithful to the pixel-relu map-first spec; adoption
+flagged for re-decision in RESULTS; implemented exactly through a
+cache of sensed channel values). With iso-eccentric items the window's weight at the
 sensed points is one shared scalar — a pure softmax temperature —
 so k, r0 are exactly unidentifiable in scope and stay on
 theoretical definition; no IoR term

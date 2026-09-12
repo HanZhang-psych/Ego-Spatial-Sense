@@ -8,10 +8,12 @@ from model import load_final
 m = load_final()
 sacc, ev = data.load_frames()
 sacc, tt = data.build_tensors(sacc, ev)
-ctx = np.load("dataset/contexts.npz")
+S = np.load("dataset/senses.npz")
 cid = torch.tensor(sacc.ctx.values.astype(int))
-P, FORM = torch.tensor(ctx["P"])[cid], torch.tensor(ctx["FORM"])[cid]
-prob = reproduce.model_probs(m, sacc, tt, P, FORM).numpy()
+A = torch.tensor(S["A"])[cid]
+prob = reproduce.model_probs(m, sacc, tt, A,
+                             torch.tensor(S["BH6"]), torch.tensor(S["BH4"]),
+                             torch.tensor(S["D6"]), torch.tensor(S["D4"])).numpy()
 _, test = data.subject_split(tt)
 held = test.numpy()
 

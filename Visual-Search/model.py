@@ -3,31 +3,34 @@
 The model builds a PRE-WINDOW priority map over the display -
 
   map(x) = g_T * relu(target-color contrast at x)
-         - g_D * relu(distractor-color contrast at x)
+         - g_D_eff * relu(distractor-color contrast at x)
          + g_F * shape match at x
          + beta_T * h_T field(x) + beta_D * h_D field(x)
 
 (the history fields are each item's history value smoothed by a
-fixed spatial kernel, PAINT_SIG in build_contexts.py - a stated
-model assumption) - multiplies it by the ego-anchored attention
-window sigmoid(k*(r0 - d)), and reads it out as the average over
-each item's sector (a pie slice of the display). Softmax over the
-sector averages predicts the first saccade.
+fixed kernel with PEAK HEIGHT 1, PAINT_SIG in build_contexts.py - a
+stated model assumption) - multiplies it by the ego-anchored
+attention window sigmoid(k*(r0 - d)), and SENSES it at each item's
+center: F_i = P(x_i), the point-sensing readout (adopted 2026-09-11;
+see RESULTS). Softmax over the six sensed values predicts the first
+saccade.
 
-Implementation: the readout is precomputed as sector x distance-bin
-area averages (build_contexts.py), so
+Implementation: the sensed channel values are precomputed
+(build_contexts.py: A[ctx, item, channel], with the distractor
+channel stored as MINUS relu(distractor contrast), so the fitted
+g_D > 0 means suppression), the history kernel is the sensed matrix
+BH (~identity), and
 
-  F_i = sum over bins d of  sigmoid(k*(r0 - radii_d)) *
-        [ g_T*relu(P_T[i,d]) - g_D*relu(P_dist[i,d]) + g_F*FP[i,d]
-          + beta_T*HTP[i,d] + beta_D*HDP[i,d] ]
+  F_i = sigmoid(k*(r0 - d_i)) *
+        [ g_T*A[i,0] + g_D*A[i,1] + g_F*A[i,2]
+          + ((beta_T*h_T + beta_D*h_D) @ BH.T)[i] ]
 
-which equals the sector average of window x map, discretized over
-the distance bins. HTP/HDP = HM @ h with HM the precomputed binned
-history-kernel geometry.
+With all items on one ring, the window weight is one shared scalar -
+a pure softmax temperature - so k, r0 are not separately
+identifiable in scope and stay on theoretical definition.
 
-Notation: g_* are the stimulus gains (g_T target-color enhancement,
-g_D distractor-color suppression, g_F shape/form), beta_* the
-history gains, eta_* the memory speeds, k/r0 the attention window.
+Notation: g_* stimulus gains, beta_* history gains, eta_* memory
+speeds, k/r0 the attention window.
 
 Weights live in weights_final.json (written by fit.py).
 """
@@ -88,24 +91,22 @@ class SearchModel(nn.Module):
             hD = (1 - self.eta_D) * hD + self.eta_D * eD[:, t]
         return outT, outD
 
-    def field(self, P, FP, HTP, HDP, radii, cphi, sphi):
-        """Window x (salience + history), sector-averaged, per item.
+    def field(self, A, hT, hD, BH6, BH4, m6, D6, D4):
+        """Point-sensing readout: F_i = w(d_i) * P-sensed-at-item-i.
 
-        P [N,6,NBINS,3]: binned color contributions (target axis,
-        orthogonal, presence); FP [N,6,NBINS]: binned shape map;
-        HTP/HDP [N,6,NBINS]: binned history fields (HM @ h).
-        cphi/sphi: per-observation rotation of the distractor color
-        axis relative to the target axis (0 if singleton absent).
-        Channels are rectified before their gains: g_T = pure
-        enhancement, g_D = pure suppression."""
-        d_proj = (cphi[:, None, None] * P[..., 0]
-                  + sphi[:, None, None] * P[..., 1])
-        window = torch.sigmoid(self.k * (self.r0 - radii))
-        pre_window = (self.g_T * torch.relu(P[..., 0])
-                      - self.g_D * torch.relu(d_proj)
-                      + self.g_F * FP
-                      + self.beta_T * HTP + self.beta_D * HDP)
-        return (pre_window * window).sum(-1)
+        A [N,6,3]: per-saccade sensed channels (relu target-color
+        contrast, MINUS relu distractor-color contrast, shape match)
+        in dataset units - g_D > 0 therefore means suppression.
+        BH6/BH4: history kernel sensed between item centers; D6/D4:
+        sensed distances from fixation; m6: set-size-6 mask."""
+        vals = self.beta_T * hT + self.beta_D * hD
+        sal = (self.g_T * A[..., 0] + self.g_D * A[..., 1]
+               + self.g_F * A[..., 2])
+        F = torch.zeros(A.shape[0], 6)
+        for msk, BH, D in ((m6, BH6, D6), (~m6, BH4, D4)):
+            win = torch.sigmoid(self.k * (self.r0 - D))
+            F[msk] = win * (sal[msk] + vals[msk] @ BH.T)
+        return F
 
     def named_values(self):
         return {n: round(v, 4) for n, v in dict(
@@ -125,26 +126,6 @@ class SearchModel(nn.Module):
             self.raw_eta_T.copy_(torch.logit(torch.tensor(float(w["eta_T"]))))
             self.raw_eta_D.copy_(torch.logit(torch.tensor(float(w["eta_D"]))))
         return self
-
-
-def color_angles(sacc):
-    """Per-saccade (cos, sin) of the distractor color's angle relative
-    to the target color's direction in opponency space."""
-    import numpy as np
-    from build_contexts import template_axis
-    cphi = np.zeros(len(sacc))
-    sphi = np.zeros(len(sacc))
-    pairs = sacc[["targCol", "singCol"]].drop_duplicates()
-    for _, r in pairs.iterrows():
-        if r.singCol == "none":
-            continue
-        uT = template_axis(r.targCol)
-        uS = template_axis(r.singCol)
-        m = (sacc.targCol.values == r.targCol) & (sacc.singCol.values == r.singCol)
-        cphi[m] = uT[0] * uS[0] + uT[1] * uS[1]
-        sphi[m] = -uT[1] * uS[0] + uT[0] * uS[1]
-    return torch.tensor(cphi, dtype=torch.float32), \
-        torch.tensor(sphi, dtype=torch.float32)
 
 
 def load_final(path="weights_final.json"):

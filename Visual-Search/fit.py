@@ -1,11 +1,11 @@
-"""Fit the final search model.
+"""Fit the final search model (point-sensing readout).
 
   python fit.py        # writes weights_final.json + results_final.json
 
 Pooled MLE on first saccades, subject-level 80/20 split (held-out
-people), 300 epochs Adam. RESULTS.md is the running record (the
-alternative models priced there were fitted with earlier revisions
-of this script; the final model is the only one kept in code).
+people), 600 epochs Adam, on the sensed evidence from
+build_contexts.py (dataset/senses.npz). RESULTS.md is the running
+record; superseded constructions live in the git history.
 """
 
 import argparse
@@ -15,36 +15,24 @@ import numpy as np
 import torch
 
 import data
-from front_end import shape_for  # noqa: F401  (kept: pipeline import check)
-from model import SearchModel, color_angles
-
-RADII = torch.linspace(0.09, 1.1, 24)
+from model import SearchModel
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--epochs", type=int, default=300)
+    ap.add_argument("--epochs", type=int, default=600)
     args = ap.parse_args()
 
     sacc, ev = data.load_frames()
     sacc, tt = data.build_tensors(sacc, ev)
-    ctx = np.load("dataset/contexts.npz")
+    S = np.load("dataset/senses.npz")
     cid = torch.tensor(sacc.ctx.values.astype(int))
-    P = torch.tensor(ctx["P"])[cid]
-    FP = torch.tensor(ctx["FORMP"])[cid]
-    HM6 = torch.tensor(ctx["HM6"])
-    HM4 = torch.tensor(ctx["HM4"])
+    A = torch.tensor(S["A"])[cid]
+    BH6, BH4 = torch.tensor(S["BH6"]), torch.tensor(S["BH4"])
+    D6, D4 = torch.tensor(S["D6"]), torch.tensor(S["D4"])
     m6 = torch.tensor((sacc.setsize == 6).values)
     train, test = data.subject_split(tt)
-    cphi, sphi = color_angles(sacc)
     print(f"{len(sacc)} saccades; train/test split by subject")
-
-    def history_profiles(h):
-        # binned history field per saccade: HM @ h (per setsize)
-        out = torch.zeros(h.shape[0], 6, P.shape[2])
-        out[m6] = torch.einsum("ijd,nj->nid", HM6, h[m6])
-        out[~m6] = torch.einsum("ijd,nj->nid", HM4, h[~m6])
-        return out
 
     m = SearchModel()
     m.raw_sigma.requires_grad_(False)
@@ -54,8 +42,7 @@ def main():
     def nll(mask):
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
-        F = m.field(P, FP, history_profiles(hT), history_profiles(hD),
-                    RADII, cphi, sphi)
+        F = m.field(A, hT, hD, BH6, BH4, m6, D6, D4)
         F = F.masked_fill(~tt["valid"], -1e9)
         lp = torch.log_softmax(F, 1).gather(1, tt["choice"][:, None]).squeeze(1)
         return -lp[mask].mean()

@@ -996,6 +996,49 @@ fit.py, reproduce.py, weights_final.json, contexts.npz) still
 implements the superseded binned sector construction - pending
 migration; until then the notebook is the fit of record.
 
+## CORRECTION + script migration: the point-vs-binned comparison,
+## matched splits; exact Stilwell colors break the gradient
+
+CORRECTION. The "point-sensing beats all prior forms" comparison
+above (1.37599 vs 1.39041) compared DIFFERENT test sets: the
+notebook splits off 333//5 = 66 subjects, fit.py's subject_split
+rounds to 67, and the two draws select different people. With
+matched splits (each model trained and tested on the same split -
+the only clean comparison):
+
+|            | binned (pool-then-relu, sector) | point-sensing (pixel relu) |
+| 66-subject | 1.36524                         | 1.37599 |
+| 67-subject | 1.39026                         | 1.39774 |
+
+The old binned construction is genuinely better by ~0.008-0.011
+NLL/saccade (~190-250 total) on BOTH splits. Point-sensing remains
+the best construction faithful to the map-first spec (pixel relu):
+it recovers most of the sector-average gap (1.43014 -> 1.37599).
+The point-sensing adoption above was decided on the artifact
+numbers - flagged for re-decision.
+
+Script pipeline MIGRATED to point-sensing (build_contexts.py now
+writes dataset/senses.npz: sensed channels A[ctx,6,3], kernel
+matrices BH6/BH4, distances D6/D4, NORM; model.field is the sensed
+readout; fit/reproduce/stilwell/capture_by_trial follow;
+weights_final.json = point model, script-split test 1.39774).
+Batteries under the migrated model: suppression 42.4/7.1/13.1 (obs
+40.3/6.8/13.7), priming 74.4/35.2 and 4.2/7.5 - both strong.
+
+EXACT STILWELL COLORS (Han's catch). The battery had used generic
+guessed RGBs. Converting the paper's CIE xyY (red .646/.324, blue
+.189/.252, pink .610/.305, teal .215/.368, all 30 cd/m^2) to sRGB
+(front_end.STILWELL_COLORS) and re-running the battery under the
+point model INVERTS the salience gradient: model high 16.9% vs low
+13.9% singleton rate (observed 7.0/11.3), driven by blue-singleton
+pairs (27-34% predicted capture). The crude RG/BY opponency front
+end does not respect CIE geometry - the generic colors had been
+accidentally flattering. The out-of-sample Stilwell reproduction is
+therefore NOT currently supported under the true stimulus colors;
+open questions: calibrate the opponency axes (e.g., CIE-based
+color space) or re-scope the claim. Notebook Sec. 10b not yet
+re-executed pending this decision.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable

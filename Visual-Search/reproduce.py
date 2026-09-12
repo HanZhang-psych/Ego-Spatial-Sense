@@ -1,4 +1,4 @@
-"""Reproduction battery for the final model (no refitting).
+"""Reproduction battery for the final model (point-sensing; no refitting).
 
   python reproduce.py
 
@@ -18,26 +18,15 @@ import pandas as pd
 import torch
 
 import data
-from build_contexts import NBINS, MAXR
-from model import load_final, color_angles
-
-RADII = torch.linspace(0.09, MAXR, NBINS)
+from model import load_final
 
 
-def model_probs(m, sacc, tt, P, FP, HM6, HM4):
+def model_probs(m, sacc, tt, A, BH6, BH4, D6, D4):
     with torch.no_grad():
-        cphi, sphi = color_angles(sacc)
         oT, oD = m.compute_traces(tt["eT"], tt["eD"], None)
         hT, hD = oT[tt["si"], tt["ti"]], oD[tt["si"], tt["ti"]]
         m6 = torch.tensor((sacc.setsize == 6).values)
-
-        def hp(h):
-            out = torch.zeros(h.shape[0], 6, P.shape[2])
-            out[m6] = torch.einsum("ijd,nj->nid", HM6, h[m6])
-            out[~m6] = torch.einsum("ijd,nj->nid", HM4, h[~m6])
-            return out
-
-        F = m.field(P, FP, hp(hT), hp(hD), RADII, cphi, sphi)
+        F = m.field(A, hT, hD, BH6, BH4, m6, D6, D4)
         F = F.masked_fill(~tt["valid"], -1e9)
         return torch.softmax(F, 1)
 
@@ -45,11 +34,12 @@ def model_probs(m, sacc, tt, P, FP, HM6, HM4):
 def gaspelin(m):
     sacc, ev = data.load_frames()
     sacc, tt = data.build_tensors(sacc, ev)
-    ctx = np.load("dataset/contexts.npz")
+    S = np.load("dataset/senses.npz")
     cid = torch.tensor(sacc.ctx.values.astype(int))
-    P, FP = torch.tensor(ctx["P"])[cid], torch.tensor(ctx["FORMP"])[cid]
-    prob = model_probs(m, sacc, tt, P, FP,
-                       torch.tensor(ctx["HM6"]), torch.tensor(ctx["HM4"]))
+    A = torch.tensor(S["A"])[cid]
+    prob = model_probs(m, sacc, tt, A,
+                       torch.tensor(S["BH6"]), torch.tensor(S["BH4"]),
+                       torch.tensor(S["D6"]), torch.tensor(S["D4"]))
     _, test = data.subject_split(tt)
     held = test.numpy()
 
