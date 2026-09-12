@@ -1,150 +1,172 @@
-"""Train GoalEs2Model on ordered goal demonstrations."""
-
-import argparse
 import csv
 import os
+import argparse
 
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import tqdm
 
+from dataset.dataloader_goal import get_goal_data
 from model.goal_es2 import GoalEs2Model
 
 
-def load_tensors(path, num_features, device):
-    df = pd.read_csv(path).reset_index(drop=True)
-    scan_cols = [f"scan_{i}" for i in range(num_features)]
-    scans = torch.tensor(df[scan_cols].values, dtype=torch.float32, device=device)
-    goal = torch.tensor(df[["goal_dx", "goal_dy"]].values, dtype=torch.float32, device=device)
-    player = torch.tensor(df[["player_x", "player_y"]].values, dtype=torch.float32, device=device)
-    goal_xy = torch.tensor(df[["goal_x", "goal_y"]].values, dtype=torch.float32, device=device)
-    spawn = torch.tensor(df["goal_spawn"].values.astype(bool), device=device)
-    goal_present = df["goal_present"].values.astype(bool)
-    target = torch.tensor(df[["fx", "fy"]].values, dtype=torch.float32, device=device)
-    episode = df["episode"].values
-    # a pair that straddles a center respawn would feed the model scans from
-    # two different positions as if continuous; exclude those
-    respawn = df["respawn"].values if "respawn" in df else [0] * len(df)
-    pairs = [i for i in range(len(df) - 1)
-             if episode[i] == episode[i + 1] and not respawn[i + 1]]
-    return df, scans, goal, player, goal_xy, spawn, goal_present, target, \
-        torch.tensor(pairs, device=device)
+def train_model(
+    model_path,
+    log_path,
+    model,
+    data_loader,
+    criterion,
+    optimizer,
+    scheduler,
+    num_epochs=10,
+):
+    """
+    Train the model using the provided data loader, loss function, optimizer, and scheduler.
 
+    Args:
+        model_path (str): Path to save the best model.
+        model (torch.nn.Module): The neural network model.
+        data_loader (torch.utils.data.DataLoader): DataLoader for training data.
+        criterion (torch.nn.Module): Loss function.
+        optimizer (torch.optim.Optimizer): Optimizer.
+        scheduler (torch.optim.lr_scheduler._LRScheduler): Learning rate scheduler.
+        num_epochs (int, optional): Number of training epochs. Defaults to 10.
+    """
+    best_loss = float("inf")
 
-def build_history_vectors(df, player, goal_xy, spawn, eta, width, height):
-    out = []
-    center = torch.tensor([width / 2, height / 2], dtype=player.dtype, device=player.device)
-    trace = center
-    last_ep = None
-    for i, ep in enumerate(df["episode"].values):
-        if ep != last_ep:
-            trace = center
-            last_ep = ep
-        if bool(spawn[i].item()):
-            trace = (1 - eta) * trace + eta * goal_xy[i]
-        out.append(trace - player[i])
-    return torch.stack(out)
+    # List to store losses per epoch
+    epoch_losses = []
+
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0.0
+
+        # Progress bar for training
+        with tqdm(
+            data_loader, desc=f"Epoch {epoch + 1}/{num_epochs}", unit="batch"
+        ) as progress_bar:
+            for inputs, targets in progress_bar:
+                optimizer.zero_grad()
+
+                # The history slot is fed zeros: beta_H is frozen at 0, so the
+                # history field never enters the sum (the model of record).
+                inputs = torch.cat(
+                    [inputs, torch.zeros(inputs.size(0), 2, device=inputs.device)],
+                    dim=1,
+                )
+
+                # Forward pass
+                action = model(inputs)
+                loss = criterion(action, targets)
+
+                # Backward pass and optimization
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.item()
+
+                progress_bar.set_postfix(loss=loss.item())
+
+        # Compute average loss and update scheduler
+        avg_loss = total_loss / len(data_loader)
+
+        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {avg_loss:.5f}, ")
+
+        # Record epoch losses
+        epoch_losses.append(avg_loss)
+
+        scheduler.step(avg_loss)
+
+        # Save model if new best loss is found
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(model.state_dict(), model_path)
+            print(f"New best loss: {best_loss:.4f}. Model saved to {model_path}")
+
+    # Save losses to CSV after training
+    with open(log_path, mode="w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["loss"])  # Pass a list of column headers
+        writer.writerows(
+            [[loss] for loss in epoch_losses]
+        )  # Each loss as a one-item list
+    print(f"Losses saved to {log_path}")
 
 
 def main():
+    # Argument parsing
     parser = argparse.ArgumentParser()
+
+    # General settings
     parser.add_argument("--data_path", type=str, default="dataset/data_goal_unbiased_360.csv")
-    parser.add_argument("--model_path", type=str, default="pretrained/goal_es2.pth")
     parser.add_argument("--log_path", type=str, default="loss_goal_es2.csv")
     parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--model_path", type=str, default="pretrained/goal_es2.pth")
+
+    # Model configuration
     parser.add_argument("--num_features", type=int, default=360)
     parser.add_argument("--num_actions", type=int, default=2)
     parser.add_argument("--sensing_range", type=float, default=800.0)
-    parser.add_argument("--width", type=int, default=800)
-    parser.add_argument("--height", type=int, default=800)
-    parser.add_argument("--num_epochs", type=int, default=150)
-    parser.add_argument("--learning_rate", type=float, default=0.001)
-    parser.add_argument(
-        "--disable_history",
-        action="store_true",
-        help="freeze beta_H at 0 so the history field never enters the sum",
-    )
-    parser.add_argument(
-        "--train_history_only",
-        action="store_true",
-        help="freeze everything except beta_H, history_gain and raw_eta_H "
-        "(stage 2 of staged training; warm-start from a --disable_history "
-        "checkpoint at --model_path)",
-    )
-    parser.add_argument(
-        "--goal_free_only",
-        action="store_true",
-        help="train only on rows where no goal is visible (the anticipation "
-        "periods, where the trace is the sole driver of expert actions)",
-    )
-    args = parser.parse_args()
 
-    df, scans, goal, player, goal_xy, spawn, goal_present, target, pairs = load_tensors(
-        args.data_path, args.num_features, args.device
+    # Training configuration
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--learning_rate", type=float, default=0.001)
+    parser.add_argument("--num_epochs", type=int, default=150)
+
+    args = parser.parse_args()
+    print(f"Using device: {args.device}")
+
+    # Define input and target columns
+    scan_columns = [f"scan_{i}" for i in range(args.num_features)]
+
+    # Load training data
+    data_loader = get_goal_data(
+        file_path=args.data_path,
+        scan_columns=scan_columns,
+        goal_columns=["goal_dx", "goal_dy"],
+        target_columns=["fx", "fy"],
+        batch_size=args.batch_size,
+        device=args.device,
     )
-    if args.goal_free_only:
-        keep = ~torch.tensor(goal_present, device=args.device)
-        pairs = pairs[keep[pairs + 1]]
-        print(f"goal-free rows only: {len(pairs)} training pairs")
+
     model = GoalEs2Model(
         num_features=args.num_features,
         num_actions=args.num_actions,
         sensing_range=args.sensing_range,
     ).to(args.device)
+    with torch.no_grad():
+        model.beta_H.zero_()
+    model.beta_H.requires_grad = False
+    print(f"Goal-conditioned ES2 model initialized (history disabled)")
+
+    # Load pretrained model if available
     if os.path.exists(args.model_path):
         print(f"Loading model parameters from {args.model_path}")
         model.load_state_dict(torch.load(args.model_path, map_location=args.device))
-    if args.disable_history:
-        with torch.no_grad():
-            model.beta_H.zero_()
-        model.beta_H.requires_grad = False
-        print("history DISABLED (beta_H frozen at 0)")
-    if args.train_history_only:
-        hist_params = {"beta_H", "raw_eta_H"} | {
-            f"history_gain.{n}" for n, _ in model.history_gain.named_parameters()
-        }
-        n_train = 0
-        for name, prm in model.named_parameters():
-            prm.requires_grad = name in hist_params
-            n_train += prm.numel() if prm.requires_grad else 0
-        print(f"HISTORY-ONLY training: {n_train} trainable parameters")
+    else:
+        print("No pre-trained model found. Starting training from scratch.")
 
-    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    # Define loss function, optimizer, and scheduler
     criterion = nn.MSELoss()
-    losses = []
-    best = float("inf")
+    optimizer = optim.Adam(
+        [p for p in model.parameters() if p.requires_grad], lr=args.learning_rate
+    )
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=10
+    )
 
-    for epoch in range(args.num_epochs):
-        hist = build_history_vectors(
-            df, player, goal_xy, spawn, model.eta_H, args.width, args.height
-        )
-        i0 = pairs
-        i1 = pairs + 1
-        inputs = torch.cat([scans[i0], scans[i1], goal[i1], hist[i1]], dim=1)
-        pred = model(inputs)
-        loss = criterion(pred, target[i1])
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        losses.append(loss.item())
-
-        if loss.item() < best:
-            best = loss.item()
-            os.makedirs(os.path.dirname(args.model_path), exist_ok=True)
-            torch.save(model.state_dict(), args.model_path)
-        if epoch % 10 == 0 or epoch == args.num_epochs - 1:
-            print(
-                f"epoch {epoch}: loss={loss.item():.5f} "
-                f"eta_H={model.eta_H.item():.4f} beta_H={model.beta_H.item():+.4f}"
-            )
-
-    with open(args.log_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["loss"])
-        writer.writerows([[x] for x in losses])
-    print(f"best loss {best:.5f}; model saved to {args.model_path}")
+    # Train the model
+    train_model(
+        args.model_path,
+        args.log_path,
+        model,
+        data_loader,
+        criterion,
+        optimizer,
+        scheduler,
+        num_epochs=args.num_epochs,
+    )
 
 
 if __name__ == "__main__":

@@ -16,38 +16,29 @@ class GoalSenseDataset(Dataset):
 
     def __init__(self, data, scan_columns, goal_columns, target_columns, device):
         data = data.reset_index(drop=True)
-        self.device = device
-        self.scan_columns = scan_columns
-        self.goal_columns = goal_columns
-        self.target_columns = target_columns
 
         # Valid indices: consecutive frame pairs within the same episode.
         episodes = data["episode"].values
-        self.pairs = [
-            i for i in range(len(data) - 1) if episodes[i] == episodes[i + 1]
-        ]
-        self.data = data
+        pairs = [i for i in range(len(data) - 1) if episodes[i] == episodes[i + 1]]
+        self.pairs = torch.tensor(pairs, dtype=torch.long)
+
+        # Pre-build every tensor once so __getitem__ is pure indexing
+        # (per-sample pandas access dominates training time otherwise).
+        scans = torch.tensor(data[scan_columns].values, dtype=torch.float32,
+                             device=device)
+        goal = torch.tensor(data[goal_columns].values, dtype=torch.float32,
+                            device=device)
+        target = torch.tensor(data[target_columns].values, dtype=torch.float32,
+                              device=device)
+        i0, i1 = self.pairs, self.pairs + 1
+        self.inputs = torch.cat([scans[i0], scans[i1], goal[i1]], dim=1)
+        self.targets = target[i1]
 
     def __len__(self):
         return len(self.pairs)
 
     def __getitem__(self, idx):
-        i = self.pairs[idx]
-        first_sample = self.data.iloc[i]
-        next_sample = self.data.iloc[i + 1]
-
-        inputs = torch.tensor(
-            list(first_sample[self.scan_columns].values)
-            + list(next_sample[self.scan_columns].values)
-            + list(next_sample[self.goal_columns].values),
-            dtype=torch.float32,
-        ).to(self.device)
-
-        target = torch.tensor(
-            [next_sample[col] for col in self.target_columns], dtype=torch.float32
-        ).to(self.device)
-
-        return inputs, target
+        return self.inputs[idx], self.targets[idx]
 
 
 def get_goal_data(
