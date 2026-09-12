@@ -21,17 +21,22 @@ within noise, and rectify-after-the-gains remains rejected) — plus
 the pixel-derived template-shape map and the two world-anchored
 leaky location traces rendered as a HISTORY FIELD (each item's
 trace value placed at its location, smoothed by a fixed sigma=0.03
-FIXED-MASS kernel — a stated assumption; the mass constant is a
-unit convention keeping the betas in salience units, so sigma sets
-spread only, never weight). All of it forms ONE pre-window
+kernel with PEAK HEIGHT 1 — a stated assumption; the peak
+convention is the point-readout dual of fixed mass: a fully primed
+own location senses as exactly beta, and sigma sets spread only). All of it forms ONE pre-window
 priority map over the display; the ego-anchored sigmoid attention
 window multiplies that map pixel by pixel (in scope the fitted
 window is flat — r0 beyond the display — a shared gain kept on
-theoretical definition, not data constraint), and the readout is
-each item's sector average (implemented as precomputed sector x
-distance-bin area sums - an exact regrouping of the linear parts;
-the relu and the window act at bin rather than pixel resolution,
-a quantified approximation on record in RESULTS; no ray sampling); no IoR term
+theoretical definition, not data constraint), and the readout
+SENSES the priority map at each item's center — F_i = P(x_i), six
+point samples across six directions, like a per-ray range sensor
+(adopted 2026-09-11 over the sector average: held-out NLL 1.37599
+vs 1.39041 binned / 1.43014 sector-average pixel; implemented
+exactly through a cache of sensed channel values, relu at pixel
+resolution). With iso-eccentric items the window's weight at the
+sensed points is one shared scalar — a pure softmax temperature —
+so k, r0 are exactly unidentifiable in scope and stay on
+theoretical definition; no IoR term
 (unidentifiable before the second saccade); softmax over the sector
 averages; nine fitted weights. In this construction g_D fits to ~0:
 suppression is carried by relegation plus location history (see

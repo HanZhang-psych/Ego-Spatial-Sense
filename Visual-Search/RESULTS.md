@@ -980,8 +980,21 @@ as exactly beta):
   only the combination is identified - the standing two-color
   caveat, stronger under point sampling).
 
-Pending Han's call: adopt as the construction of record (Sec. 1
-readout step, predict_saccade, kernel convention, Sec. 8 cache).
+ADOPTED as the construction of record (Han's call, 2026-09-11):
+Sec. 1 step 3 is now F_i = P(x_i); predict_saccade senses the map
+at the six item centers; the history kernel is peak-normalized
+(G(0) = 1, so a fully primed own location senses as exactly beta);
+Sec. 8's cache is 936 sensed numbers, verified 0.0 against the
+literal model; the demo betas track the fit (2.0 / -0.5). Notebook
+re-executed end to end: held-out NLL 1.37599, pseudo-R2 0.213,
+top-1 45.9%, prior-by-trial +1.37 vs +0.09. Stilwell ordering
+survives but the sensed readout OVERSHOOTS the absolute singleton
+rates out of sample (model 11.2/21.2 vs observed 7.1/11.4;
+sector-era model read 4.9/8.7) - the ordering, not the level, is
+the claim on record. NOTE: the script pipeline (build_contexts.py,
+fit.py, reproduce.py, weights_final.json, contexts.npz) still
+implements the superseded binned sector construction - pending
+migration; until then the notebook is the fit of record.
 
 ## Caveats on record
 
