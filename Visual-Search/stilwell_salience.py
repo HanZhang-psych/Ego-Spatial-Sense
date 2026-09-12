@@ -26,13 +26,11 @@ from build_contexts import display_senses
 from model import load_final
 
 m = load_final()
-S = np.load("dataset/senses.npz")
-NORM = S["NORM"]
 
 
 def probs(targCol, singCol, targLoc, singLoc):
-    A = display_senses(6, targLoc, singLoc, targCol, singCol) / NORM
-    A = torch.tensor(A)
+    # display_senses already returns greyscale units - the fit's units
+    A = torch.tensor(display_senses(6, targLoc, singLoc, targCol, singCol))
     with torch.no_grad():
         F = m.g_C * A[:, 0] + m.g_F * A[:, 1]
     return torch.softmax(F[None], 1)[0].numpy()

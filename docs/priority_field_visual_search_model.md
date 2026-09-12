@@ -40,7 +40,13 @@ centers, softmaxed:
   newest trial gets (large = recent trials dominate, small = a
   long average).
 
-Fitted values: g_C +0.226, g_F +0.498, beta_T +2.13, beta_D -0.49,
+Channel units are greyscale: the color map's full scale is 1 (its
+strongest pixel on the canonical display), the shape map peaks at
+1, the history kernel peaks at 1 — so every weight reads the same
+way, as the priority delivered by a full-strength unit of its
+channel, and the four map weights compare directly.
+
+Fitted values: g_C +0.353, g_F +1.39, beta_T +2.13, beta_D -0.49,
 eta_T 0.60, eta_D 0.16; held-out NLL 1.39749 (script split) /
 1.37415 (notebook split). Every parameter is identified and
 sign-interpretable.

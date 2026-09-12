@@ -19,10 +19,19 @@ from central fixation, a window multiplies every sensed priority
 by one shared scalar the gains absorb - fits with and without it
 are exactly identical (RESULTS).
 
+Channel units are GREYSCALE (adopted 2026-09-12): the color map is
+divided by a fixed full-scale constant (its strongest pixel on the
+canonical display) so pixels lie in [-1, 1]; the shape map is
+max-normalized to peak 1. With the kernel's peak-1 convention every
+weight then reads identically - the priority delivered by a
+full-strength unit of its channel - so g_C, g_F, beta_T, beta_D
+compare directly. A pure reparameterization: fits and predictions
+are unchanged.
+
 Implementation: the sensed channel values are precomputed
 (build_contexts.py: A[ctx, item, channel] = signed D_T and shape
-match at the item centers), the history kernel is the sensed matrix
-BH (~identity), and
+match at the item centers, greyscale units), the history kernel is
+the sensed matrix BH (~identity), and
 
   F_i = g_C*A[i,0] + g_F*A[i,1]
         + ((beta_T*h_T + beta_D*h_D) @ BH.T)[i]
@@ -40,9 +49,10 @@ SIX free parameters - the final form of record:
   eta_D   weight on recent distractor locations
 
 Every parameter is identified and sign-interpretable; fitted
-values (600 epochs, subject split seed 0): g_C +0.226, g_F +0.498,
-beta_T +2.13, beta_D -0.49, eta_T 0.60, eta_D 0.16; held-out NLL
-1.39749 (script split) / 1.37415 (notebook split).
+values (600 epochs, subject split seed 0, greyscale units):
+g_C +0.353, g_F +1.39, beta_T +2.13, beta_D -0.49, eta_T 0.60,
+eta_D 0.16; held-out NLL 1.39749 (script split) / 1.37415
+(notebook split).
 
 Weights live in weights_final.json (written by fit.py).
 """

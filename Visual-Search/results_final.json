@@ -1,13 +1,12 @@
 {
  "params": {
-  "g_C": 0.2256,
-  "g_F": 0.4977,
+  "g_C": 0.3526,
+  "g_F": 1.3931,
   "beta_T": 2.1252,
   "beta_D": -0.4898,
   "eta_T": 0.6029,
-  "eta_D": 0.1578,
-  "sigma": 0.0
+  "eta_D": 0.1578
  },
- "train_nll_per_saccade": 1.4170050621032715,
+ "train_nll_per_saccade": 1.417005181312561,
  "test_nll_per_saccade": 1.397485375404358
 }

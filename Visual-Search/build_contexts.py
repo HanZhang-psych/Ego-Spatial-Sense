@@ -23,10 +23,17 @@ are paper-sourced (the OSF trial files carry no display parameters).
 All displays use the canonical green-target / red-singleton scheme
 (see normalize_colors).
 
-Output: dataset/senses.npz -- A [ctx, 6, 2] (sensed channels: the
-SIGNED template-axis color contrast D_T and the shape match;
-divided by NORM, the per-channel std over unique displays),
-NORM [3], BH6/BH4 [6, 6] (sensed history kernel per set size). Plus
+Channel units are GREYSCALE: the color channel (signed
+template-axis contrast D_T) is divided by GREY_C - the strongest
+|D_T| pixel of the canonical green/red display - so its pixels lie
+in [-1, 1]; the shape channel is divided by its max, so it peaks at
+1. With the history kernel's peak-1 convention, every weight then
+reads the same way: priority delivered by a full-strength unit of
+its channel.
+
+Output: dataset/senses.npz -- A [ctx, 6, 2] (sensed greyscale
+channels), GREY [1] (the color constant, for the record),
+BH6/BH4 [6, 6] (sensed history kernel per set size). Plus
 dataset/saccades_ctx.csv (saccades with ctx ids).
 
 Usage: python build_contexts.py
@@ -154,6 +161,30 @@ def template_axis(targCol):
 
 PAINT_SIG = 0.03      # fixed history-smoothing kernel (model assumption)
 
+_GREY_C = None
+
+
+def grey_color_constant():
+    """Fixed full-scale unit for the color channel: the strongest
+    |D_T| pixel of the canonical green/red set-size-6 display (the
+    notebook's Sec. 3 demo display - target slot 2, singleton slot 5
+    - so both pipelines share the constant exactly). Dividing by it
+    makes the color map greyscale (pixels in [-1, 1]), so g_C reads
+    as the priority delivered by a full-strength color pixel - the
+    same convention as the shape channel (max-normalized, peak 1)
+    and the history kernel (peak 1: beta = a fully primed
+    location)."""
+    global _GREY_C
+    if _GREY_C is None:
+        pos, _ = item_positions(6)
+        items = [dict(x=pos[k][0], y=pos[k][1],
+                      color=("red" if k + 1 == 5 else "green"),
+                      shape=shape_for(k + 1, 2)) for k in range(6)]
+        maps = opponency_contrast(render(items))
+        u = template_axis("green")
+        _GREY_C = float(np.abs(u[0] * maps["RG"] + u[1] * maps["BY"]).max())
+    return _GREY_C
+
 
 def item_centers(setsize):
     """The sensed pixels: each item's center, as (row, col)."""
@@ -165,11 +196,11 @@ def item_centers(setsize):
 def display_senses(setsize, targLoc, singLoc, targCol, singCol):
     """One display -> the model's sensed evidence A [6, 2]: the two
     channel maps (SIGNED template-axis color contrast D_T, shape
-    match / its max) evaluated at each item's center. singCol only
-    affects the rendering - the single goal gain g_C weighs the
-    signed projection of whatever colors are on screen. Mirrors the
-    notebook's channel_maps exactly; unnormalized (main() divides by
-    the per-channel stds)."""
+    match / its max) evaluated at each item's center, in GREYSCALE
+    units (color divided by grey_color_constant, shape by its max).
+    singCol only affects the rendering - the single goal gain g_C
+    weighs the signed projection of whatever colors are on screen.
+    Mirrors the notebook's channel_maps exactly."""
     pos, _ = item_positions(setsize)
     items = [dict(x=pos[k][0], y=pos[k][1],
                   color=(singCol if (k + 1) == singLoc and singCol != "none"
@@ -179,8 +210,9 @@ def display_senses(setsize, targLoc, singLoc, targCol, singCol):
     maps = opponency_contrast(img)
     u = template_axis(targCol)
     gmap = u[0] * maps["RG"] + u[1] * maps["BY"]     # signed D_T
+    gmap = gmap / grey_color_constant()              # greyscale: [-1, 1]
     sm = shape_match_map(img)
-    sm = sm / max(sm.max(), 1e-9)
+    sm = sm / max(sm.max(), 1e-9)                    # greyscale: peak 1
     chans = np.stack([gmap, sm])
     A = np.zeros((6, 2), dtype=np.float32)
     for j, (py, px) in enumerate(item_centers(setsize)):
@@ -223,12 +255,8 @@ def main():
         if dk not in cache:
             cache[dk] = display_senses(*dk)
         A[int(k.ctx)] = cache[dk]
-    # per-channel unit constants: std over the UNIQUE displays' sensed
-    # values - a pure unit choice keeping the gains O(1) (identical to
-    # the notebook's NORM)
-    norm = np.stack(list(cache.values())).reshape(-1, 2).std(0)
-    A /= norm
-    np.savez_compressed("dataset/senses.npz", A=A, NORM=norm,
+    np.savez_compressed("dataset/senses.npz", A=A,
+                        GREY=np.array([grey_color_constant()]),
                         BH6=kernel_matrix(6), BH4=kernel_matrix(4))
     merged = sacc.merge(keys, on=["setsize", "targLoc", "singLoc",
                                   "targCol", "singCol", "fixloc"], how="left")

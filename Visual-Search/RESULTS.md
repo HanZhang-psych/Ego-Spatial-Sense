@@ -1151,11 +1151,12 @@ the exact-tie demonstrations above. The complete model:
   P(i)  = softmax(F)_i
   h    <- (1 - eta) h + eta e          (leaky accumulators)
 
-Six parameters, every one identified and sign-interpretable:
-g_C +0.226 (net goal-color modulation), g_F +0.498 (goal shape),
-beta_T +2.13 / beta_D -0.49 (history pull/push), eta_T 0.60 /
-eta_D 0.16 (recency weights: how much the newest trial counts). G is the fixed sigma = 0.03 peak-1
-kernel (stated assumption).
+Six parameters, every one identified and sign-interpretable
+(values in the greyscale units adopted below): g_C +0.353 (net
+goal-color modulation), g_F +1.39 (goal shape), beta_T +2.13 /
+beta_D -0.49 (history pull/push), eta_T 0.60 / eta_D 0.16
+(recency weights: how much the newest trial counts). G is the
+fixed sigma = 0.03 peak-1 kernel (stated assumption).
 
 Fits: script split held-out NLL 1.39749; notebook split 1.37415 -
 both identical to the windowed forms (1.39750 / 1.37416), as the
@@ -1170,6 +1171,35 @@ window code, k/r0, and the sigmoid helper are gone from notebook
 and pipeline alike. The ego-anchored window remains a theoretical
 construct OUTSIDE the fitted model, testable only with
 eccentricity variation or peripheral fixations.
+
+## Greyscale channel units (adopted, Han's call, 2026-09-12)
+
+The color and shape maps are normalized to GREYSCALE inside the
+model: the color map is divided by a fixed full-scale constant
+GREY_C = 1.5088 (the strongest |D_T| pixel of the canonical
+green/red display - the notebook's Sec. 3 demo display, shared
+exactly by both pipelines), putting its pixels in [-1, 1]; the
+shape map was already max-normalized to peak 1. This replaces the
+former per-channel std constants (NORM = 0.965 / 0.357), which are
+gone from notebook and pipeline alike.
+
+Why: with the history kernel's peak-1 convention, every weight now
+reads the same way - the priority delivered by a full-strength
+unit of its channel - so g_C, g_F, beta_T, beta_D compare directly
+(g_F ~4x g_C per full-scale pixel; a freshly primed target
+location ~6x a full-scale color pixel). Under the old std units
+the color/shape pair was comparable to each other but not to the
+betas.
+
+A pure reparameterization, verified: script refit lands at test
+NLL 1.397485 (unchanged to 6 decimals), notebook refit at 1.37415,
+cache-vs-literal sanity 0.00e+00, and every battery number is
+identical (suppression 42.7/7.4/13.0; priming 74.7/35.6, 4.4/7.8;
+Stilwell 7.2/10.6). Fitted gains rescale exactly as the algebra
+predicts: g_C 0.226 -> 0.353 (= x GREY_C / 0.965), g_F 0.498 ->
+1.39 (= / 0.357); betas and etas untouched. Stilwell displays need
+no special handling - their weaker schematic colors simply sense
+below full scale under the same fixed constant.
 
 ## Caveats on record
 
