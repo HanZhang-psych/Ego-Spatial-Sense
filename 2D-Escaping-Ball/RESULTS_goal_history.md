@@ -155,6 +155,46 @@ The geometric goal/history model therefore matches the original model on
 success and collision rate in this trial-reset evaluation, but reaches the
 target more slowly.
 
+## Ablation: selection history disabled (2026-09-12)
+
+The trial-reset evaluation resets the target with unbiased sampling every
+trial, so a location-history trace has nothing systematic to exploit.  We
+therefore retrained the same architecture on the same dataset with history
+disabled: `--disable_history` freezes `beta_H` at 0, so the history field
+never enters the sum (the history-gain MLP then receives no gradient and
+`eta_H` stays at its 0.05 init).  Both trainer and evaluator take the
+flag.
+
+Training (150 epochs, cpu, identical data and settings):
+
+```text
+checkpoint: pretrained/goal_history_geometric_trial_unbiased_360_150_nohist.pth
+wall clock: 37.8 s
+loss: 62.96960 -> 8.64123 (best 8.58004)
+```
+
+The with-history run on the same data ended at loss 21.31 after the same
+150 epochs (its wall clock was not recorded).  Disabling history more than
+halves the final imitation loss — the randomly-initialized history channel
+is pure input noise on this task, and the optimizer spends capacity
+suppressing it rather than fitting the expert.
+
+Trial-reset evaluation (100 trials, `--disable_history`):
+
+```text
+success:   100 / 100 = 1.000, mean_steps = 40.5
+collision:   0 / 100 = 0.000
+timeout:     0 / 100 = 0.000
+```
+
+Comparison of mean steps to target: no-history 40.5, original GoalEs2
+42.4, with-history 60.4.  With history disabled the model matches the
+plain goal model and removes the with-history slowdown entirely.  On this
+unbiased task, then, the history channel costs both training fit and
+evaluation speed while buying nothing — the expected result, and the
+motivation for a future evaluation with target-location structure (e.g.
+repeat vs change trials) where history could help.
+
 ## Notes
 
 - The evaluation task uses unbiased target sampling.
