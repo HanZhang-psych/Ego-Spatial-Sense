@@ -102,15 +102,18 @@ python3 train_goal_history_es2.py \
   --device cpu
 ```
 
-Evaluate on the trial-reset reach-avoid task:
+Evaluate on the continuous reach-avoid task (the evaluation of record —
+it mirrors the expert-demo structure: a persistent world where reaching a
+goal spawns the next one, no resets; add `--disable_history` for the
+ablated model):
 
 ```bash
-python3 evaluate_trial_reach_avoid_history.py \
+python3 evaluate_goal_history.py \
   --model_path pretrained/goal_history_geometric_trial_unbiased_360_150.pth \
-  --num_features 360 \
-  --num_trials 100 \
-  --max_steps_per_trial 1000 \
-  --device cpu
+  --goal_bias none \
+  --goal_free_steps 0 \
+  --max_steps 6000 \
+  --num_seeds 3
 ```
 
 ## Results
@@ -134,26 +137,32 @@ eta_H: 0.0462
 beta_H: 0.1688
 ```
 
-Trial-reset evaluation:
+Continuous evaluation (2026-09-12, the evaluation of record; 3 seeds x
+6,000 steps, unbiased goals, no goal-free periods — the expert-demo
+structure, so the models are tested in the distribution they were trained
+on):
 
 ```text
-success:   100 / 100 = 1.000, mean_steps = 60.4
-collision:   0 / 100 = 0.000
-timeout:     0 / 100 = 0.000
+with history:    54.5 goals/min, 1.5 collisions/min
+expert baseline: 65.8 goals/min, 0.0 collisions/min
 ```
 
-For comparison, the original pretrained `GoalEs2Model` with direct goal
-injection and no history also reached:
+The original pretrained `GoalEs2Model` under its own continuous evaluator
+(`evaluate_reach_avoid.py`, same seeds/steps; protocol differs slightly —
+no per-goal timeout and default spawn distance):
 
 ```text
-success:   100 / 100 = 1.000, mean_steps = 42.4
-collision:   0 / 100 = 0.000
-timeout:     0 / 100 = 0.000
+plain GoalEs2:   67.5 goals/min, 0.5 collisions/min
 ```
 
-The geometric goal/history model therefore matches the original model on
-success and collision rate in this trial-reset evaluation, but reaches the
-target more slowly.
+The with-history model is slower than both the expert and the plain goal
+model on this unbiased task (see the ablation below: the gap is the
+history channel's fault).
+
+An earlier trial-reset evaluation (each trial reset player, obstacles,
+and target; superseded because it mismatched the continuous expert-demo
+structure) gave: with-history 100/100 success, 0 collisions, 60.4 mean
+steps; plain GoalEs2 100/100, 42.4 mean steps.
 
 ## Ablation: selection history disabled (2026-09-12)
 
@@ -179,26 +188,33 @@ halves the final imitation loss — the randomly-initialized history channel
 is pure input noise on this task, and the optimizer spends capacity
 suppressing it rather than fitting the expert.
 
-Trial-reset evaluation (100 trials, `--disable_history`):
+Continuous evaluation (`evaluate_goal_history.py --goal_bias none
+--goal_free_steps 0 --max_steps 6000 --num_seeds 3 --disable_history`):
 
 ```text
-success:   100 / 100 = 1.000, mean_steps = 40.5
-collision:   0 / 100 = 0.000
-timeout:     0 / 100 = 0.000
+no history:      68.0 goals/min, 0.0 collisions/min
+with history:    54.5 goals/min, 1.5 collisions/min
+plain GoalEs2:   67.5 goals/min, 0.5 collisions/min
+expert baseline: 65.8 goals/min, 0.0 collisions/min
 ```
 
-Comparison of mean steps to target: no-history 40.5, original GoalEs2
-42.4, with-history 60.4.  With history disabled the model matches the
-plain goal model and removes the with-history slowdown entirely.  On this
-unbiased task, then, the history channel costs both training fit and
-evaluation speed while buying nothing — the expected result, and the
-motivation for a future evaluation with target-location structure (e.g.
-repeat vs change trials) where history could help.
+With history disabled the model matches the plain goal model and the
+expert's throughput, with zero collisions; the with-history model is ~20%
+slower and collides.  On this unbiased task, then, the history channel
+costs training fit, throughput, and safety while buying nothing — the
+expected result, and the motivation for a future evaluation with
+goal-location structure (e.g. biased or repeating goal locations) where
+history could help.  (The superseded trial-reset evaluation agreed:
+no-history 40.5 mean steps vs with-history 60.4, both 100/100.)
 
 ## Notes
 
 - The evaluation task uses unbiased target sampling.
-- Each trial resets the player, obstacles, and target.
-- Success means reaching the target before collision or timeout.
-- Collision ends the trial as a failure.
-- The history trace persists across successful trials during evaluation.
+- The evaluation of record is continuous, mirroring the expert demo: one
+  persistent world per seed; reaching a goal (or a 300-step timeout)
+  spawns the next; collisions are counted, not terminal.
+- The history trace persists across goals within a seed and updates on
+  each goal spawn.
+- The earlier trial-reset evaluation (world reset after every goal) is
+  superseded; its script `evaluate_trial_reach_avoid_history.py` was
+  removed.
