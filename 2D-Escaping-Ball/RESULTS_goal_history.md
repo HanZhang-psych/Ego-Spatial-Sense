@@ -224,6 +224,32 @@ out-of-distribution crowding: paths lengthen (~30 steps/100px vs ~12.6
 at 10 balls) and the obstacle field frequently saturates with no safe
 gap toward the goal.
 
+## Stress test: ball speed sweep (2026-09-12)
+
+`--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
+velocity after world creation.  Training speeds are 1-3 px/step and never
+change, so multiplied speeds are outside anything in the demonstrations.
+Model of record, continuous protocol (3 seeds x 6,000 steps, 10 balls):
+
+```text
+x1: 68.0 goals/min, 0.0 collisions/min   (ball speeds 1-3)
+x2: 72.2 goals/min, 0.5 collisions/min   (2-6)
+x3: 73.3 goals/min, 0.7 collisions/min   (3-9)
+x4: 71.0 goals/min, 4.8 collisions/min   (4-12, some balls now outrun
+                                          the ego's max speed of 10)
+```
+
+The looming channel extrapolates: throughput holds (even ticks up
+slightly — fast balls vacate corridors sooner) and collisions stay near
+zero through x3, where the fastest balls nearly match the ego's own
+speed.  Degradation begins at x4, where 1-3 px/step balls become 4-12
+and the fastest of them are strictly faster than the ego, so some
+contacts stop being avoidable even in principle.  Contrast with the
+density stress test (40 balls: throughput ~38%, 6 collisions/min) and
+the pursuer test (collapse): speed generalization is the axis this
+model handles best, consistent with the looming delta scaling linearly
+and monotonically with obstacle speed.
+
 ## Adversarial test: seeded pursuer (2026-09-12)
 
 `evaluate_adversarial_goal_history.py` transplants the stressor of

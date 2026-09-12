@@ -24,6 +24,10 @@ def in_quad(goal):
 def run_seed(model, args, seed):
     random.seed(seed)
     player, balls = make_world(args.num_balls, args.width, args.height)
+    for b in balls:
+        if b is not player:
+            b.dx *= args.speed_multiplier
+            b.dy *= args.speed_multiplier
     tracker = CollisionTracker()
     prev = None
     trace = torch.tensor([args.width / 2, args.height / 2], dtype=torch.float32)
@@ -105,6 +109,12 @@ def main():
     parser.add_argument("--num_actions", type=int, default=2)
     parser.add_argument("--sensing_range", type=float, default=800.0)
     parser.add_argument("--num_balls", type=int, default=10)
+    parser.add_argument(
+        "--speed_multiplier",
+        type=float,
+        default=1.0,
+        help="scale every ball's velocity (training speeds are 1-3 px/step)",
+    )
     parser.add_argument("--width", type=int, default=800)
     parser.add_argument("--height", type=int, default=800)
     parser.add_argument("--max_speed", type=float, default=10.0)
