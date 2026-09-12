@@ -1154,7 +1154,7 @@ the exact-tie demonstrations above. The complete model:
 Six parameters, every one identified and sign-interpretable:
 g_C +0.226 (net goal-color modulation), g_F +0.498 (goal shape),
 beta_T +2.13 / beta_D -0.49 (history pull/push), eta_T 0.60 /
-eta_D 0.16 (memory speeds). G is the fixed sigma = 0.03 peak-1
+eta_D 0.16 (recency weights: how much the newest trial counts). G is the fixed sigma = 0.03 peak-1
 kernel (stated assumption).
 
 Fits: script split held-out NLL 1.39749; notebook split 1.37415 -

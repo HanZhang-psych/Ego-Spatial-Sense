@@ -36,7 +36,9 @@ centers, softmaxed:
   HEIGHT 1 (a stated assumption; the peak convention is the
   point-readout dual of fixed mass — a fully primed own location
   senses as exactly beta).
-- **eta_T, eta_D** — the memory speeds of those traces.
+- **eta_T, eta_D** — the traces' recency weights: the weight the
+  newest trial gets (large = recent trials dominate, small = a
+  long average).
 
 Fitted values: g_C +0.226, g_F +0.498, beta_T +2.13, beta_D -0.49,
 eta_T 0.60, eta_D 0.16; held-out NLL 1.39749 (script split) /

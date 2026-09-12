@@ -36,8 +36,8 @@ SIX free parameters - the final form of record:
   g_F     goal-shape gain (template match)
   beta_T  pull toward past target locations
   beta_D  push from past distractor locations
-  eta_T   target-memory speed (leaky accumulator)
-  eta_D   distractor-memory speed
+  eta_T   weight on recent target locations (leaky accumulator)
+  eta_D   weight on recent distractor locations
 
 Every parameter is identified and sign-interpretable; fitted
 values (600 epochs, subject split seed 0): g_C +0.226, g_F +0.498,
