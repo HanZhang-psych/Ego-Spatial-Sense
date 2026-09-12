@@ -378,6 +378,51 @@ likely-vs-unlikely location effect: history helps where the
 environment's statistics repeat and costs where they break - the
 biased-attention trade-off, now in closed-loop navigation.
 
+### Center-referenced spawn rule (2026-09-12)
+
+Han's objection to the split above: if the agent drifts toward (thus
+closer to) the upcoming target, likely-position goals should get
+cheaper - and they structurally could not, because `min_spawn_dist`
+(250 px) was measured from the PLAYER, so goals always spawned >=250 px
+from wherever the agent stood, and the efficiency metric normalizes by
+spawn distance anyway.  Fix: `--spawn_from_center` measures the rule
+from the arena center (the respawn point) in expert and evaluator, so
+goal positions are defined relative to the arena, like a search
+display.  Full staged pipeline re-run on the new dataset
+(`data_goal_history_biased_respawn_cs_360.csv`, not committed; expert
+990 goals, 49.5 goals/min):
+
+```text
+                    goals/min   coll/min   free drift   freq/rare steps per 100px
+staged history      35.8        3.7        -0.31        19.7 / 20.0
+history disabled    36.7        3.0        -0.75        18.4 / 20.4
+```
+
+The proximity benefit still did not materialize: throughput is now
+equal (35.8 vs 36.7), and the staged model is no better at frequent
+goals in absolute terms.  The relative history effect on goal-free
+drift is stable (+0.44 px/step vs the ablated baseline, matching the
++0.47 relative effect of the previous design), but both baselines
+shifted negative.  Two candidate reasons, recorded as open issues:
+
+1. Magnitude shrinkage: the models drift at well under 1 px/step while
+   the expert covers up to 10 px/step toward its trace - MSE cloning
+   averages over uncertain directions and shrinks the anticipation
+   vector, so ~10-15 px of approach against >=250 px goal distances is
+   a few percent, invisible in throughput.
+2. Spawn geometry: with the 250 px rule measured from the center, much
+   of the quadrant (whose center is only ~180 px from the arena
+   center) is ineligible, so frequent goals concentrate in the
+   quadrant's outer corner - drifting toward the quadrant center aims
+   at a spot goals cannot occupy.
+
+The honest summary: the spawn-rule artifact is fixed, and with it
+fixed, the anticipation the cloned models actually express is too weak
+and too misaimed to pay.  Making history pay would need some
+combination of a stronger/faster expert drift in the demos, a smaller
+min-spawn distance, or a frequent region positioned so its eligible
+zone is where the trace points.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's

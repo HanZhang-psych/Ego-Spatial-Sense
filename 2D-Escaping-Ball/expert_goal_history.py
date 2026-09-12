@@ -23,15 +23,27 @@ from reach_avoid_common import (
 QUAD = (140, 140, 400, 400)
 
 
+class _CenterRef:
+    def __init__(self, args):
+        self.x, self.y = args.width / 2, args.height / 2
+
+
 def sample_goal_biased(player, args):
+    # --spawn_from_center: the minimum-spawn-distance rule is measured from
+    # the arena center (the respawn point), not the agent.  Goal positions
+    # are then defined relative to the arena - like a search display - so an
+    # agent that pre-positions near the frequent region genuinely starts
+    # closer.  Measured from the player, drifting toward the region just
+    # pushes eligible spawns to its far side and cancels the benefit.
+    ref = _CenterRef(args) if getattr(args, "spawn_from_center", False) else player
     if args.goal_bias == "quadrant" and random.random() < args.bias_p:
         for _ in range(200):
             gx = random.uniform(QUAD[0], QUAD[2])
             gy = random.uniform(QUAD[1], QUAD[3])
-            if math.hypot(gx - player.x, gy - player.y) >= args.min_spawn_dist:
+            if math.hypot(gx - ref.x, gy - ref.y) >= args.min_spawn_dist:
                 return gx, gy
     return sample_goal(
-        player, args.width, args.height, min_dist=args.min_spawn_dist
+        ref, args.width, args.height, min_dist=args.min_spawn_dist
     )
 
 
@@ -127,6 +139,11 @@ def main():
     parser.add_argument("--bias_p", type=float, default=0.8)
     parser.add_argument("--min_spawn_dist", type=float, default=250)
     parser.add_argument("--expert_eta", type=float, default=0.05)
+    parser.add_argument(
+        "--spawn_from_center",
+        action="store_true",
+        help="measure min_spawn_dist from the arena center, not the player",
+    )
     parser.add_argument(
         "--respawn_center",
         action="store_true",

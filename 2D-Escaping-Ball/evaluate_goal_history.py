@@ -140,6 +140,11 @@ def main():
     parser.add_argument("--num_seeds", type=int, default=3)
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument(
+        "--spawn_from_center",
+        action="store_true",
+        help="measure min_spawn_dist from the arena center, not the player",
+    )
+    parser.add_argument(
         "--respawn_center",
         action="store_true",
         help="teleport the player to the center at the start of every goal cycle",
