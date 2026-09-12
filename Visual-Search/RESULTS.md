@@ -1121,6 +1121,24 @@ stimulus and history alike), now an explicitly stated choice;
 designs with eccentricity variation or peripheral fixations would
 be needed to test the placement.
 
+## No window at all: an EXACT tie - six parameters carry everything
+## (Han's request)
+
+Variant with the window deleted outright (F_i = salience_i +
+history_i; six free parameters). Same recipe/split/epochs: train
+NLL identical to five decimals (1.41701 both), test 1.39749 vs the
+record's 1.39750, and the fitted gains equal the record's times
+w(0.5) = 0.965 exactly (0.226/0.498/2.13/-0.49 vs
+0.234/0.516/2.20/-0.51) - the pure reparameterization the scope
+algebra demands. Within first-saccade scope the model's predictive
+content is SIX parameters (g_C, g_F, beta_T, beta_D, eta_T,
+eta_D); the window is definitional: one shared scalar on the
+sensed priorities, absorbed by gain scale. k, r0 stay in the model
+of record because the theory posits an ego-anchored attention
+window - now demonstrated exactly (completing the flat-window
+notes above), not because these data constrain one. Testing the
+window needs eccentricity variation or peripheral fixations.
+
 ## Caveats on record
 
 - **Window anchoring: display-relative vs fixed-size - untestable
