@@ -1,0 +1,2 @@
+model,num_balls,speed_multiplier,goals_per_min,collisions_per_min
+transformer,30,1.0,19.5,2.5

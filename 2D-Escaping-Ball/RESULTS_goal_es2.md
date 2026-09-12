@@ -477,6 +477,59 @@ anticipation.  Conclusion: the spawn floor is not the lever; the
 magnitude shrinkage of the cloned anticipation (and near-goal control
 generally) is where the imitation gap lives.
 
+## Three-model comparison: goal ES2 vs goal MLP vs goal transformer (2026-09-12)
+
+All three models retrained from scratch on Great Lakes on IDENTICAL
+footing: same demonstrations (`data_goal_unbiased_360.csv`), same
+mini-batch recipe (batch 64, Adam 1e-3, MSE, plateau scheduler, 500
+epochs = 94,000 gradient updates), same vectorized dataloader.  ES2 and
+MLP trained on 8 CPUs; the transformer needed a GPU (L40S; ~38 h
+projected on CPU), so its wall-clock is not hardware-comparable.
+Evaluation: the continuous task, 3 seeds x 6,000 steps per condition,
+as density (10-50 balls) and speed (1x-4x) sweeps.  Full per-condition
+CSVs in `results_compare/`; figure `results_compare/model_comparison.png`.
+
+Training (loss by epoch is now a fair axis):
+
+```text
+                final MSE   wall-clock
+goal ES2        0.044       10:09  (8 CPUs)
+goal MLP        0.111        7:25  (8 CPUs)
+goal transformer 3.59       45:44  (L40S GPU)
+```
+
+The MLP is faster than ES2 per wall-clock at the same epochs - the
+original goalless ordering, restored once the trainers were unified.
+The transformer converges an order of magnitude more slowly and ends
+~80x above ES2's loss, still descending.
+
+Rollout, trained regime (10 balls, 1x; expert 65.8 goals/min, 0):
+
+```text
+goal ES2         62.8 goals/min, 0.0 collisions/min
+goal transformer 53.5 goals/min, 0.0 collisions/min
+goal MLP         38.0 goals/min, 2.2 collisions/min
+```
+
+Sweeps (see figure): throughput falls with density for all three and
+roughly converges by 50 balls (~9-12 goals/min), but SAFETY separates
+the architectures: at 50 balls the field model collides 7.7/min, the
+transformer 22.0, the MLP 69.0 - the MLP's collision curve grows
+roughly linearly with density from 10 balls on.  Under speed the field
+model holds 63-71 goals/min across the whole 1x-4x range with
+collisions rising only past 3x; the transformer is similar though
+noisier; the MLP is uniformly lower-throughput and less safe.
+
+Two honest observations.  First, imitation loss does not predict
+rollout: the transformer's 80x-worse MSE still yields respectable
+closed-loop behavior (its errors average out over steps), while the
+MLP's decent MSE hides systematically unsafe avoidance.  Second, the
+field model wins overall - highest throughput in the trained regime
+and the most graceful degradation on BOTH stress axes - while also
+being the only architecture with an interpretable field structure
+(and, per the priming section, the only one with a natural handle for
+a selection-history mechanism).
+
 ## Target-location priming: mechanism-sufficiency demonstration (2026-09-12)
 
 Reframing (Han): the end goal is the agent-side analog of the search

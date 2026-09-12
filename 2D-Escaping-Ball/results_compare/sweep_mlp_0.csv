@@ -1,0 +1,2 @@
+model,num_balls,speed_multiplier,goals_per_min,collisions_per_min
+mlp,10,1.0,38.0,2.1666666666666665

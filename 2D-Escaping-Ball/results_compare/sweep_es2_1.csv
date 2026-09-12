@@ -1,0 +1,2 @@
+model,num_balls,speed_multiplier,goals_per_min,collisions_per_min
+es2,20,1.0,43.666666666666664,0.3333333333333333
