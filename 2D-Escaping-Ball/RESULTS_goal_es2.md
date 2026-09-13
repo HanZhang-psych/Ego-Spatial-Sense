@@ -653,6 +653,88 @@ signatures, absent at zero) is unchanged - only the precedence rule
 and the effect's carrier (pre-positioning, not in-flight tug) are
 sharpened.
 
+## Statistical learning: leaky world-grid history (2026-09-13)
+
+Han's requirement, from the point-trace limitation: the agent should
+remember the LIKELY goal region no matter where it moves - memory must
+be world-anchored (allocentric), not tied to any fixed viewpoint, with
+the egocentric conversion happening at readout.  And the one-back
+trace cannot accumulate statistics (its horizon is one trial), while a
+leaky average of a single 2D point drags toward the spatial mean and
+blurs (why the old biased-world experiments failed).
+
+Construction (`evaluate_statistical_learning.py`): the history memory
+is a leaky accumulator over an 8x8 world-coordinate grid - at each
+goal spawn `W *= (1 - eta); W[cell] += eta` - and the readout is
+`beta_H * sum_c W[c] * geometric_field(center_c - player, goal_gain)`.
+The priority-field formula and the goal-overrides-history gate are
+unchanged; the one-back trace is the eta = 1 degenerate case.  eta =
+memory dynamics, the grid = what is remembered, beta_H = how strongly
+memory biases the field (mass converges to 1, so beta_H is still
+needed to keep memory fainter than a real goal).
+
+Task: fixation-start trials; goals at ecc 250-330, 70% in a 90-degree
+wedge centered due-left, 30% in the mirror wedge due-right (fixed,
+symmetric, distance-matched; a left-vs-right HALF split was tried
+first and failed - a 180-degree region is too diffuse for a drift
+mechanism, net drift misaligns with most goals and the steps effect
+drowns in the +/-5-7 noise floor).
+
+Sufficiency (hand-set beta = 0.2, eta = 0.1; 6 seeds x 180 trials,
+30-trial warm-up; steps to goal from onset, timeouts excluded):
+
+```text
+                       left(hi)  right(lo)  effect   drift-left
+beta 0 (control)         57.6      54.6      -3.0      -0.05
+beta 0.1                 56.7      60.6      +3.9      +0.43
+beta 0.2                 56.8      63.0      +6.1      +0.88
+one-back beta 0.2        56.7      65.0      +8.3      +0.92
+```
+
+High-probability facilitation and low-probability cost, monotone in
+beta (net ~ +9 vs the control).  The DISSOCIATION from priming is the
+subset where the previous goal fell in the unlikely wedge: there the
+grid keeps drifting toward the likely region (+0.7 px/step; effect
++8.7) while one-back inverts (drift -2.5, effect -18.3, chasing the
+last goal).  One-back's healthy all-trials number is priming
+masquerading as probability cueing - the standard sequential-effects
+confound in the human literature, resolved the standard way.
+
+Extinction (beta 0.2, eta 0.1; bias for trials 0-89, 50/50 after):
+drift builds ~0.3 -> ~1.0-1.2 px/step over ~30 trials, then after the
+switch decays through one residual block (+0.35) to ~0 - the
+exponential forgetting a leak of eta predicts (tau ~ 1/eta goals).
+HONEST BOUNDARY: human location probability cueing extinguishes far
+more slowly (Jiang's persistence findings); a single-eta accumulator
+tracks current statistics but cannot produce habit-like persistence
+(a fast + slow two-accumulator variant could, at the cost of a new
+parameter - not needed by anything shown so far).
+
+Parameter recovery, exact units (the chain of record, in the
+notebook): TEACHER = the trained checkpoint + grid at ground truth
+beta* = 0.2, eta* = 0.15 plays 200 biased trials (drift +0.90
+px/step); FIT = fresh frozen copy, ONLY (beta_H, eta) trained on the
+teacher's 1,990 goal-free rows, grid replayed differentiably under the
+candidate eta -> RECOVERED beta_hat = 0.200, eta_hat = 0.150 exactly
+(residual MSE 0.31 = integer-stepping noise); DEPLOY = the fitted
+student in the biased-then-unbiased world -> the drift bias emerges
+over the biased half (~1.0-1.4 px/step plateau) and extinguishes to
+~0 within ~2 blocks of the switch.  An earlier recovery run against a
+scripted potential-field expert (drift ~1.76 px/step realized) gave
+eta_hat 0.094 vs eta* 0.1 and a behaviorally matched beta_hat 0.68
+(units differ from a drift-speed knob, so beta was checked by rollout
+drift: +1.98 vs +1.76).
+
+Framing for the paper (Han's summary, corrected wording): the memory
+MECHANISM is endowed and its two parameters are fitted from expert
+demonstrations; the STATISTICS are then acquired - and un-acquired -
+from experience in deployment.  Cloning a history-blind expert still
+correctly finds nothing (the negative record above stands).
+
+The notebook's Sec. 7 now presents this chain in place of the
+one-back priming demonstration; the priming construction and its
+gated record remain in this ledger and in `evaluate_priming.py`.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's
