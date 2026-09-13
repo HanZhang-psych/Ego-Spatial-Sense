@@ -702,8 +702,20 @@ confound in the human literature, resolved the standard way.
 
 Extinction (beta 0.2, eta 0.1; bias for trials 0-89, 50/50 after):
 drift builds ~0.3 -> ~1.0-1.2 px/step over ~30 trials, then after the
-switch decays through one residual block (+0.35) to ~0 - the
-exponential forgetting a leak of eta predicts (tau ~ 1/eta goals).
+switch decays through one residual block (+0.35) DOWN TO THE
+MEMORYLESS BASELINE - the exponential forgetting a leak of eta
+predicts (tau ~ 1/eta goals).  The baseline is not exactly zero: the
+zero-goal input never occurs in the cloning data, so the base
+policy's output there is an unconstrained residual (probe: (-0.21,
++0.08) px/step in an empty arena, mean (-0.02, +1.26) over 10-ball
+worlds - mostly downward; its closed-loop horizontal component comes
+out ~0.1-0.45 px/step rightward).  The notebook figure overlays the
+beta_H = 0 control on the same protocol and seeds: after the switch
+the fitted agent lands on and tracks that line, so "extinguished"
+means indistinguishable from the memoryless agent.  An amplification
+hypothesis (symmetric two-bump memory as an unstable equilibrium
+magnifying the residual) was considered and is NOT supported - the
+tail matches the baseline within its bands.
 HONEST BOUNDARY: human location probability cueing extinguishes far
 more slowly (Jiang's persistence findings); a single-eta accumulator
 tracks current statistics but cannot produce habit-like persistence
