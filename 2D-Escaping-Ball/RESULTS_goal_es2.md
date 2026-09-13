@@ -583,6 +583,76 @@ capture.  This parallels the search model's history term exactly: a
 small parametric bolt-on entering through the same spatial machinery as
 the goal, whose strength determines both the benefit and the bias.
 
+## Priming, revised: goal overrides history (construction of record, 2026-09-12)
+
+Han, watching the live priority-map demo: history persisting while a
+clear goal is visible is wrong - selection history is anticipation and
+should operate when there is NO goal; a visible goal should override
+it.  And the priming effect does not need the in-flight tug: it is
+carried by PRE-POSITIONING - during the goal-free window the agent
+drifts toward the remembered location, so it stands closer to a
+repeated goal and farther from a changed one at goal onset.
+
+`evaluate_priming.py` is now GATED by default: the history field is
+zeroed whenever a goal is visible (history feeds the map only during
+the goal-free anticipation window).  `--ungated` restores the original
+always-on sum.  The anticipation window of record is
+`--goal_free_steps 50` (was 25).
+
+Sweep (3 seeds x 101 trials per beta; priming = change - repeat steps;
+beta_H = 0 baseline wobbles ~ +/-12, the noise floor):
+
+```text
+GATED, window 25:
+beta   repeat   change   priming   drift px/step   timeouts
+0.0     71.1     82.6     +11.6        -0.48          26
+0.1     65.9     89.1     +23.2        +1.82          22
+0.2     63.2     89.7     +26.5        +3.66          22
+0.4     52.4     88.4     +36.1        +6.63          16
+
+GATED, window 50 (the record):
+0.0     79.3     77.1      -2.3        -0.33          21
+0.1     67.6     89.4     +21.8        +1.34          23
+0.2     66.8    100.9     +34.1        +2.69          22
+0.4     60.6    101.1     +40.5        +4.09          24
+
+GATED, window 100:
+0.0     80.3     92.1     +11.8        -0.18          32
+0.1     66.1     94.0     +27.9        +0.82          30
+0.2     64.1     85.7     +21.6        +1.50          27
+0.4     54.9     89.6     +34.6        +2.20          27
+
+UNGATED, window 25 (the original construction, for reference):
+0.0     71.1     82.6     +11.6        -0.48          26
+0.1     56.6    107.3     +50.6        +1.52          34
+0.2     49.9    116.2     +66.4        +3.54          44
+0.4     23.6    133.7    +110.1        +6.51          65
+```
+
+Findings:
+
+1. Priming survives gating: repeat facilitation and change cost both
+   emerge and scale with beta_H from pre-positioning alone.  The
+   earlier claim (in-session) that full override would eliminate the
+   effect was wrong - the drift channel is sufficient.
+2. Capture is gone.  Gated timeouts sit at the beta-0 floor at every
+   beta (16-27), versus 26 -> 65 ungated.  The change cost is bounded
+   by drift distance instead of growing into pursuit of an empty
+   location - arguably more human: slower on changed targets, but not
+   locked onto the old location.
+3. Longer windows do not buy proportionally more effect: per-step
+   drift falls 6.6 -> 4.1 -> 2.2 (windows 25/50/100) because the agent
+   largely ARRIVES at the remembered location (~165 px covered in 25
+   steps against 250-330 px eccentricity) and the average dilutes.
+   Window 50 maximizes the priming effect (+40.5 at beta 0.4); 100
+   adds nothing and slightly raises timeouts.
+
+The previous section's ungated numbers remain the historical record of
+the original construction; the conceptual claim (one parameter, both
+signatures, absent at zero) is unchanged - only the precedence rule
+and the effect's carrier (pre-positioning, not in-flight tug) are
+sharpened.
+
 ## Stress test: ball speed sweep (2026-09-12)
 
 `--speed_multiplier` in `evaluate_goal_history.py` scales every ball's

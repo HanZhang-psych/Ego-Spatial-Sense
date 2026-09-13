@@ -20,6 +20,14 @@ mechanism's second signature, logged from the same runs); then the goal
 appears - on REPEAT trials at the previous goal's location, on CHANGE
 trials at the same eccentricity but rotated 90-270 degrees away, so path
 lengths are matched.  Measured: steps to goal and initial heading error.
+
+Goal-vs-history precedence (default GATED): history is anticipation and
+operates only in the absence of a goal; once a goal is visible it
+overrides history (the history field is zeroed during pursuit).  Priming
+then comes entirely from pre-positioning - the drift moved the agent
+closer to a repeated goal and away from a changed one before it appeared.
+--ungated restores the original always-on sum (history also tugs during
+pursuit, producing capture at high beta).
 """
 
 import argparse
@@ -106,13 +114,17 @@ def run_seed(model, beta, args, seed):
                 ang = ang + math.radians(random.uniform(90, 270))
                 goal = (cx + ecc * math.cos(ang), cy + ecc * math.sin(ang))
 
-        # pursue
+        # pursue.  Gated (default): the visible goal OVERRIDES history -
+        # the history field is zeroed, so priming comes entirely from the
+        # pre-positioning drift of the anticipation window.  --ungated
+        # keeps history active during pursuit (the original construction:
+        # adds an in-flight tug, and capture at high beta).
         head_err = float("nan")
         used = None
         for t in range(1, args.goal_timeout + 1):
             step_world()
             fx, fy = act((goal[0] - player.x, goal[1] - player.y),
-                         (0.0, 0.0) if prev_goal is None
+                         (0.0, 0.0) if (prev_goal is None or not args.ungated)
                          else (prev_goal[0] - player.x, prev_goal[1] - player.y))
             if t == 1 and (fx or fy):
                 gang = math.atan2(goal[1] - player.y, goal[0] - player.x)
@@ -141,7 +153,7 @@ def main():
     parser.add_argument("--height", type=int, default=800)
     parser.add_argument("--max_speed", type=float, default=10.0)
     parser.add_argument("--goal_timeout", type=int, default=300)
-    parser.add_argument("--goal_free_steps", type=int, default=25)
+    parser.add_argument("--goal_free_steps", type=int, default=50)
     parser.add_argument("--ecc_min", type=float, default=250.0)
     parser.add_argument("--ecc_max", type=float, default=330.0)
     parser.add_argument("--num_trials", type=int, default=101)
@@ -149,6 +161,9 @@ def main():
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--betas", type=float, nargs="+",
                         default=[0.0, 0.1, 0.2, 0.4])
+    parser.add_argument("--ungated", action="store_true",
+                        help="keep the history field active while a goal is "
+                             "visible (the original always-on sum)")
     args = parser.parse_args()
 
     model = GoalEs2Model(
