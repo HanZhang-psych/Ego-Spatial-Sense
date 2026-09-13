@@ -10,7 +10,6 @@ from evaluate_goal_es2 import run_seed
 from model.goal_es2 import GoalEs2Model
 from model.goal_mlp import GoalMLPModel
 from model.goal_transformer import GoalTransformerModel
-from evaluate_goal_mlp import _NoHistory
 
 
 def main():
@@ -35,23 +34,19 @@ def main():
     if args.model == "es2":
         model = GoalEs2Model(num_features=args.num_features)
         model.load_state_dict(torch.load("pretrained/goal_es2.pth", map_location="cpu"))
-        with torch.no_grad():
-            model.beta_H.zero_()
-        wrapped = model
+        model = model
     elif args.model == "mlp":
         model = GoalMLPModel(num_features=args.num_features)
         model.load_state_dict(torch.load("pretrained/goal_mlp.pth", map_location="cpu"))
-        wrapped = _NoHistory(model)
     else:
         model = GoalTransformerModel(num_features=args.num_features, d_model=16,
                                      nhead=4, num_encoder_layers=2,
                                      dim_feedforward=64, sensing_range=800.0)
         model.load_state_dict(torch.load("pretrained/goal_transformer.pth",
                                          map_location="cpu"))
-        wrapped = _NoHistory(model)
-    wrapped.eval()
+    model.eval()
 
-    rows = [run_seed(wrapped, args, args.random_seed + i)
+    rows = [run_seed(model, args, args.random_seed + i)
             for i in range(args.num_seeds)]
     g = sum(r["goals_per_min"] for r in rows) / len(rows)
     c = sum(r["collisions_per_min"] for r in rows) / len(rows)

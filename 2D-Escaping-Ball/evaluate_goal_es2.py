@@ -29,7 +29,6 @@ def run_seed(model, args, seed):
             b.dy *= args.speed_multiplier
     tracker = CollisionTracker()
     prev = None
-    trace = torch.tensor([args.width / 2, args.height / 2], dtype=torch.float32)
     goals = steps = 0
 
     def step(goal):
@@ -41,8 +40,7 @@ def run_seed(model, args, seed):
         if prev is None:
             prev = d.copy()
         gdx, gdy = goal[0] - player.x, goal[1] - player.y
-        hist = trace - torch.tensor([player.x, player.y], dtype=torch.float32)
-        obs = torch.tensor(prev + d + [gdx, gdy] + hist.tolist(),
+        obs = torch.tensor(prev + d + [gdx, gdy],
                            dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
             action = model(obs)
@@ -59,8 +57,6 @@ def run_seed(model, args, seed):
     while steps < args.max_steps:
         goal = sample_goal(player, args.width, args.height,
                            min_dist=args.min_spawn_dist)
-        trace = ((1 - model.eta_H.detach().cpu()) * trace
-                 + model.eta_H.detach().cpu() * torch.tensor(goal))
         used = 0
         while steps < args.max_steps and used < args.goal_timeout:
             step(goal)
@@ -98,11 +94,6 @@ def main():
     parser.add_argument("--min_spawn_dist", type=float, default=250)
     parser.add_argument("--num_seeds", type=int, default=3)
     parser.add_argument("--random_seed", type=int, default=42)
-    parser.add_argument(
-        "--disable_history",
-        action="store_true",
-        help="zero beta_H so the history field drops out of the sum",
-    )
     args = parser.parse_args()
 
     model = GoalEs2Model(
@@ -112,11 +103,6 @@ def main():
     ).to(args.device)
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
     model.eval()
-    if args.disable_history:
-        with torch.no_grad():
-            model.beta_H.zero_()
-        print("history DISABLED (beta_H forced to 0)")
-    print(f"eta_H={model.eta_H.item():.4f} beta_H={model.beta_H.item():+.4f}")
 
     rows = [run_seed(model, args, args.random_seed + i) for i in range(args.num_seeds)]
     for k in rows[0]:

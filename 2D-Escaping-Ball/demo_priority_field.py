@@ -116,10 +116,10 @@ while running:
                                   prev_goal[1] - player.y)
     else:
         gvec, hvec = (0.0, 0.0), (0.0, 0.0)
-    obs = torch.tensor(prev + d + list(gvec) + [0.0, 0.0],
+    obs = torch.tensor(prev + d + list(gvec),
                        dtype=torch.float32).unsqueeze(0)
     with torch.no_grad():
-        f_obs, f_goal, _ = model.compute_fields(obs)
+        f_obs, f_goal = model.compute_fields(obs)
         hv = torch.tensor(hvec, dtype=torch.float32).unsqueeze(0)
         f_hist = model.geometric_field(hv, model.goal_gain)
         field = (f_obs + f_goal + args.beta * f_hist)[0].numpy()

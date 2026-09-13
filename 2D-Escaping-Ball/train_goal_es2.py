@@ -49,14 +49,8 @@ def train_model(
             for inputs, targets in progress_bar:
                 optimizer.zero_grad()
 
-                # The history slot is fed zeros: beta_H is frozen at 0, so the
-                # history field never enters the sum (the model of record).
-                inputs = torch.cat(
-                    [inputs, torch.zeros(inputs.size(0), 2, device=inputs.device)],
-                    dim=1,
-                )
-
-                # Forward pass
+                # Forward pass (cloning never uses the memory: forward()
+                # without a history_field ignores beta_H entirely)
                 action = model(inputs)
                 loss = criterion(action, targets)
 
@@ -135,10 +129,7 @@ def main():
         num_actions=args.num_actions,
         sensing_range=args.sensing_range,
     ).to(args.device)
-    with torch.no_grad():
-        model.beta_H.zero_()
-    model.beta_H.requires_grad = False
-    print(f"Goal-conditioned ES2 model initialized (history disabled)")
+    print("Goal-conditioned ES2 model initialized")
 
     # Load pretrained model if available
     if os.path.exists(args.model_path):
@@ -149,9 +140,7 @@ def main():
 
     # Define loss function, optimizer, and scheduler
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(
-        [p for p in model.parameters() if p.requires_grad], lr=args.learning_rate
-    )
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=10
     )

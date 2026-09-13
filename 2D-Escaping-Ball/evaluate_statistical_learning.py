@@ -42,10 +42,8 @@ import random
 
 import torch
 
-from model.goal_es2 import GoalEs2Model
+from model.goal_es2 import GRID, GoalEs2Model
 from environment import GOAL_RADIUS, lidar_scan, make_world
-
-GRID = 8
 
 
 def grid_centers(width, height):
@@ -81,9 +79,9 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
     rng = random.Random(seed)
     random.seed(seed)
     width, height = args.width, args.height
-    centers = grid_centers(width, height)
     player, balls = make_world(args.num_balls, width, height)
-    memory = torch.zeros(GRID * GRID)
+    model.eta_H = eta
+    model.reset_memory(width, height)
     prev_scan = None
     rows, goal_seq = [], []
     drifts = [float("nan")] * n_trials
@@ -93,11 +91,14 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
         d, _ = lidar_scan(player, balls, width, height, args.num_features)
         if prev_scan is None:
             prev_scan = d
-        obs = torch.tensor(prev_scan + d + list(goal_vec) + [0.0, 0.0],
+        obs = torch.tensor(prev_scan + d + list(goal_vec),
                            dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            of, gf, _ = model.compute_fields(obs)
-            a = model.sense_action_layers(of + gf + beta * hfield)[0]
+            of, gf = model.compute_fields(obs)
+            f = of + gf
+            if hfield is not None:
+                f = f + beta * hfield
+            a = model.sense_action_layers(f)[0]
         scan = prev_scan
         prev_scan = d
         return scan, d, (min(max(a[0].item(), -args.max_speed), args.max_speed),
@@ -114,7 +115,6 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
         player.y = max(player.radius, min(height - player.radius,
                                           player.y + int(fy)))
 
-    zeros = torch.zeros(1, args.num_features)
     for trial in range(n_trials):
         player.x, player.y = width // 2, height // 2
         prev_scan = None
@@ -122,11 +122,7 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
             x0 = player.x
             for t in range(args.goal_free_steps):
                 step_world()
-                vec = centers - torch.tensor([player.x, player.y],
-                                             dtype=torch.float32)
-                with torch.no_grad():
-                    G1 = model.geometric_field(vec, model.goal_gain)
-                hf = (memory.unsqueeze(1) * G1).sum(0, keepdim=True)
+                hf = model.history_field((player.x, player.y))
                 px, py = player.x, player.y
                 pscan, d, (fx, fy) = act((0.0, 0.0), hf)
                 if record_rows and t % args.record_every == 0:
@@ -138,13 +134,12 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
         for t in range(args.goal_timeout):
             step_world()
             _, _, (fx, fy) = act((goal[0] - player.x, goal[1] - player.y),
-                                 zeros)
+                                 None)
             move(fx, fy)
             if math.hypot(goal[0] - player.x, goal[1] - player.y) < GOAL_RADIUS:
                 break
         goal_seq.append(cell_of(goal, width, height))
-        memory *= (1 - eta)
-        memory[goal_seq[-1]] += eta
+        model.update_memory(goal)
     return rows, goal_seq, drifts
 
 

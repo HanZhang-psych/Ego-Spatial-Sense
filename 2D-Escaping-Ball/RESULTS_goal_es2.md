@@ -653,6 +653,27 @@ signatures, absent at zero) is unchanged - only the precedence rule
 and the effect's carrier (pre-positioning, not in-flight tug) are
 sharpened.
 
+## Refactor: the leaky accumulator moves into the model (2026-09-13)
+
+`model/goal_es2.py` now owns the spatial memory: `reset_memory(w, h)`,
+`update_memory(goal)` (the leaky update), `history_field(pos)` (the
+egocentric readout through goal_gain), with `eta_H` a plain attribute
+and `beta_H` the strength parameter applied in `forward(input,
+history_field=None)`.  The legacy point-trace path (`history_gain`,
+`raw_eta_H`, the history dx/dy input slot) is REMOVED: the network
+input is now scans + goal (2 x 360 + 2), history is opt-in via the
+forward argument, and a visible goal overriding history is expressed
+by simply not passing it.  Consequences: trainers no longer pad a
+zero history slot; `evaluate_goal_es2.py` loses `--disable_history`
+(the plain evaluation is history-free by construction) and its trace
+replay; the `_NoHistory` baseline wrappers are gone (baseline input =
+722 matches directly); `evaluate_statistical_learning.py` uses the
+model's own memory API.  Local checkpoints migrate by dropping the
+removed keys (history_gain.*, raw_eta_H); no retraining is needed -
+the surviving parameters are untouched.  Historical commands in
+earlier sections that mention `--disable_history` or the 724-dim
+input refer to pre-refactor revisions.
+
 ## Statistical learning: leaky world-grid history (2026-09-13)
 
 Han's requirement, from the point-trace limitation: the agent should

@@ -11,18 +11,6 @@ from evaluate_goal_es2 import run_seed
 from model.goal_transformer import GoalTransformerModel
 
 
-class _NoHistory(torch.nn.Module):
-    """Adapter: drop the trace dims and report a zero trace-update rate."""
-
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
-        self.eta_H = torch.tensor(0.0)
-
-    def forward(self, x):
-        return self.model(x[:, :-2])
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, default="pretrained/goal_transformer.pth")
@@ -58,8 +46,7 @@ def main():
     model.load_state_dict(torch.load(args.model_path, map_location=args.device))
     model.eval()
 
-    wrapped = _NoHistory(model)
-    rows = [run_seed(wrapped, args, args.random_seed + i)
+    rows = [run_seed(model, args, args.random_seed + i)
             for i in range(args.num_seeds)]
     for k in rows[0]:
         vals = [r[k] for r in rows]

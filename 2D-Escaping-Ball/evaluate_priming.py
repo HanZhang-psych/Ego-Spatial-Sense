@@ -11,8 +11,7 @@ goal, a one-back trace) is treated as a faint goal.  Its field is built
 with the TRAINED goal-field machinery - `geometric_field(trace - player,
 goal_gain)` - scaled by a single swept scalar BETA.  The base policy is a
 trained history-disabled checkpoint; its own history channel contributes
-nothing (beta_H = 0 in the checkpoint, and the input's trace slot is fed
-zeros).  Nothing is trained here.
+nothing (beta_H = 0 in the checkpoint).  Nothing is trained here.
 
 Trial structure (fixation-start): teleport to center; a goal-free
 anticipation window (drift toward the remembered location is the
@@ -56,10 +55,10 @@ def run_seed(model, beta, args, seed):
         d, _ = lidar_scan(player, balls, args.width, args.height, args.num_features)
         if act.prev is None:
             act.prev = d
-        obs = torch.tensor(act.prev + d + list(goal_vec) + [0.0, 0.0],
+        obs = torch.tensor(act.prev + d + list(goal_vec),
                            dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            of, gf, _ = model.compute_fields(obs)
+            of, gf = model.compute_fields(obs)
             hv = torch.tensor(hist_vec, dtype=torch.float32).unsqueeze(0)
             hf = model.geometric_field(hv, model.goal_gain)
             a = model.sense_action_layers(of + gf + beta * hf)[0]
