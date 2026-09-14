@@ -1,20 +1,15 @@
-"""Reconstruct the displays and precompute the model's SENSED evidence.
+"""Reconstruct displays and precompute the model's item evidence.
 
 One pass: read dataset/saccades.csv (from pool_data.py), normalize
 colors, assign a context id to every unique (setsize, targLoc,
 singLoc, targCol, singCol, fixation) combination, render each unique
 display once (feature search: target circle among heterogeneous
-nontarget shapes, singleton in the opposite color), compute the
-pre-window sensory and goal-evidence maps, and SENSE each map at the
-item centers (display_senses) - the point-sensing readout F_i =
-P(x_i) adopted 2026-09-11 (see RESULTS). The cache is exact by
-construction: the model only ever looks at the priority map at those
-pixels.
+nontarget shapes, singleton in the opposite color), and compute one row
+of item evidence per display item.
 
-The history kernel (PAINT_SIG = 0.03, peak height 1 - the
-point-readout unit convention: a fully primed own location senses as
-exactly beta) is precomputed as the matrix of each item's bump
-sensed at every center (kernel_matrix; ~identity at this sigma).
+The fitted model is item-based: it consumes A[ctx, item, field] directly
+and adds target history at the same item index. Pixel maps remain here
+only to support visualization and shape/color footprint construction.
 
 Reconstruction assumptions: per-trial set size, colors, and item
 distances come from the data files; shapes, item size, and background
@@ -22,19 +17,16 @@ are paper-sourced (the OSF trial files carry no display parameters).
 All displays use the canonical green-target / red-singleton scheme
 (see normalize_colors).
 
-Channel units are GREYSCALE: the color channel (signed
-template-axis contrast D_T) is divided by GREY_C - the strongest
-|D_T| pixel of the canonical green/red display - so its pixels lie
-in [-1, 1]; the shape channel is divided by its max and remapped to
-[-1, 1]. With the history kernel's peak-1 convention, every weight then
-reads the same way: priority delivered by a full-strength unit of
-its channel.
+Channel units: P is unsigned item color distinctiveness
+in [0, 1]; T is a unified template-match field in [-1, 1], combining
+signed color match with signed shape match so a red square is more
+negative than a red circle; S_T is kept as a diagnostic target-shape
+similarity value in [0, 1].
 
-Output: dataset/senses.npz -- A [ctx, 6, 3] (sensed greyscale
-fields: bottom-up color salience P, target-color evidence C_T, target-shape
-evidence S_T), GREY [1] (the color constant, for the record),
-BH6/BH4 [6, 6] (sensed history kernel per set size). Plus
-dataset/saccades_ctx.csv (saccades with ctx ids).
+Output: dataset/senses.npz -- A [ctx, 6, 3] (item fields: bottom-up
+color salience P, unified template-match evidence T, diagnostic
+target-shape evidence S_T), GREY [1] (the color constant, for the
+record). Plus dataset/saccades_ctx.csv (saccades with ctx ids).
 
 Usage: python build_contexts.py
 """
@@ -42,11 +34,7 @@ Usage: python build_contexts.py
 import numpy as np
 import pandas as pd
 
-from front_end import (COLORS, IMG, ITEM_R, _gauss_blur, item_positions,
-                       render, shape_for)
-
-
-
+from front_end import COLORS, IMG, ITEM_R, item_positions, render, shape_for
 
 def normalize_colors(sacc):
     """Canonical color scheme: each subject's colors were fixed for
@@ -59,38 +47,6 @@ def normalize_colors(sacc):
     sacc["targCol"] = "green"
     sacc["singCol"] = np.where(sacc.singLoc.values > 0, "red", "none")
     return sacc
-
-
-def opponency_contrast(img):
-    """Measure local visual contrast in color-opponent coordinates.
-
-    An Itti-Koch-like center-surround front end that does not collapse
-    into one unsigned salience map: it returns signed red-vs-green
-    (RG) and blue-vs-yellow (BY) contrast maps, so the model can tell
-    which color direction differs from the surround. The function still
-    returns its legacy local-contrast P diagnostic, but display_senses()
-    writes the model-of-record P from item-level color distinctiveness
-    instead. The goal later rotates the signed maps into target-relative
-    axes; fitted gains build the goal-modified priority map.
-    """
-    r, g, b = img[..., 0], img[..., 1], img[..., 2]
-    out = {}
-    for name, m in [("RG", r - g), ("BY", b - (r + g) / 2)]:
-        c = np.zeros_like(m)
-        for s_c, s_s in [(2, 8), (4, 16), (4, 48)]:
-            c += _gauss_blur(m, s_c) - _gauss_blur(m, s_s)   # signed
-        c[:10, :] = c[-10:, :] = c[:, :10] = c[:, -10:] = 0
-        out[name] = c
-    # Legacy diagnostic: contrast of color deviation from the rendered
-    # background. This is no longer the model's sensory P channel.
-    from front_end import BG
-    dev = np.sqrt(((img - np.array(BG)) ** 2).sum(-1))
-    p = np.zeros_like(dev)
-    for s_c, s_s in [(2, 8), (4, 16)]:
-        p += np.abs(_gauss_blur(dev, s_c) - _gauss_blur(dev, s_s))
-    p[:10, :] = p[-10:, :] = p[:, :10] = p[:, -10:] = 0
-    out["P"] = p
-    return out
 
 
 def shape_kernels(r_px):
@@ -111,13 +67,18 @@ def shape_kernels(r_px):
 
 
 def shape_match_map(img, template_shape="circle"):
-    """PIXEL-DERIVED shape evidence: correlate the display's
-    background-deviation map with the template-shape kernel, with the
-    average all-shape kernel subtracted (so plain "an object is here"
-    energy cancels and only shape-DISTINCTIVE structure remains).
-    Graded and confusable by construction - a square partially matches
-    a circle. Replaces the earlier analytic label channel. Note the
-    remaining scope limit: the trial data never record item shapes, so
+    """PIXEL-DERIVED target-shape evidence with transparent background.
+
+    The rendered image is binarized into object footprints, connected
+    components are scored against the same-scale target-shape kernel,
+    and every component is painted back with its target-shape similarity.
+    The score discounts generic compact-object overlap, so a square can
+    carry partial circle evidence without looking almost target-like.
+    The result is a crisp footprint map in [0, 1]: the true target shape
+    is strongest, similar nontargets still carry partial evidence, and
+    empty background remains at 0.
+
+    Remaining scope limit: the trial data never record item shapes, so
     displays are reconstructed with the template at the target's
     location; this channel makes the EVIDENCE pathway realistic, not
     the display's provenance."""
@@ -125,29 +86,75 @@ def shape_match_map(img, template_shape="circle"):
     scale = img.shape[0] // IMG        # supports hi-res renders
     r_px = ITEM_R / 1.5 * IMG * scale
 
-    ks = shape_kernels(r_px)
-    K = ks[template_shape]
-    K = K / np.sqrt((K ** 2).sum())
-    ones = np.ones_like(K)
     dev = np.sqrt(((img - np.array(BG)) ** 2).sum(-1))
     dev = (dev > 0.15).astype(float)   # binarize: shape, not color amplitude
-    n = K.shape[0]
+    mask = dev.astype(bool)
+    out = np.zeros_like(dev)
+    yy, xx = np.mgrid[0:dev.shape[0], 0:dev.shape[1]]
+    seen = np.zeros_like(mask, dtype=bool)
+    ks = shape_kernels(r_px)
+    kshape = next(iter(ks.values())).shape
+    kc = kshape[0] // 2
 
-    def corr(kern):
-        F = np.fft.rfft2(dev) * np.conj(np.fft.rfft2(kern, dev.shape))
-        out = np.fft.irfft2(F, dev.shape)
-        return np.roll(out, (n // 2, n // 2), axis=(0, 1))
+    def score_component(comp, cx, cy, kern):
+        x0, x1 = int(round(cx)) - kc, int(round(cx)) - kc + kshape[1]
+        y0, y1 = int(round(cy)) - kc, int(round(cy)) - kc + kshape[0]
+        patch = np.zeros(kshape, dtype=bool)
+        sx0, sx1 = max(0, x0), min(mask.shape[1], x1)
+        sy0, sy1 = max(0, y0), min(mask.shape[0], y1)
+        if sx0 >= sx1 or sy0 >= sy1:
+            return 0.0
+        patch[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = comp[sy0:sy1, sx0:sx1]
+        inter = np.logical_and(patch, kern).sum()
+        union = np.logical_or(patch, kern).sum()
+        return inter / max(union, 1)
 
-    den = np.sqrt(np.maximum(corr(ones), 1e-9))
+    for y_start, x_start in zip(*np.nonzero(mask & ~seen)):
+        if seen[y_start, x_start]:
+            continue
+        stack = [(int(y_start), int(x_start))]
+        seen[y_start, x_start] = True
+        pts = []
+        while stack:
+            y, x = stack.pop()
+            pts.append((y, x))
+            for yn in range(max(0, y - 1), min(mask.shape[0], y + 2)):
+                for xn in range(max(0, x - 1), min(mask.shape[1], x + 2)):
+                    if mask[yn, xn] and not seen[yn, xn]:
+                        seen[yn, xn] = True
+                        stack.append((yn, xn))
+        pts = np.asarray(pts)
+        cy, cx = pts.mean(axis=0)
+        comp = np.zeros_like(mask, dtype=bool)
+        comp[pts[:, 0], pts[:, 1]] = True
+        scores = {sh: score_component(comp, cx, cy, kern.astype(bool))
+                  for sh, kern in ks.items()}
+        relative = scores[template_shape] / max(max(scores.values()), 1e-9)
+        out[comp] = np.clip((relative - 0.60) / 0.40, 0.0, 1.0) ** 2.0
 
-    def ncc(shape):
-        Ks = ks[shape] / np.sqrt((ks[shape] ** 2).sum())
-        return corr(Ks) / den          # normalized cross-correlation
+    return out / out.max() if out.max() > 0 else out
 
-    # discriminative match: template NCC minus the best competing shape's
-    m = ncc(template_shape) - np.max(
-        [ncc(sh) for sh in ks if sh != template_shape], axis=0)
-    return _gauss_blur(np.maximum(m, 0), 2 * scale)
+
+def item_shape_similarity(shape, template_shape="circle"):
+    """Template-shape similarity for an item label, in [0, 1]."""
+    r_px = ITEM_R / 1.5 * IMG
+    ks = {k: v.astype(bool) for k, v in shape_kernels(r_px).items()}
+    target = ks[template_shape]
+    other = ks.get(shape, ks["circle"])
+    inter = np.logical_and(other, target).sum()
+    union = np.logical_or(other, target).sum()
+    relative = inter / max(union, 1)
+    return float(np.clip((relative - 0.60) / 0.40, 0.0, 1.0) ** 2.0)
+
+
+def signed_shape_match_map(items, template_shape="circle"):
+    """Signed shape match in [-1, 1] as hard item footprints."""
+    m = np.zeros((IMG, IMG))
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    for it in items:
+        sim = item_shape_similarity(it.get("shape", "circle"), template_shape)
+        m[item_footprint_mask(it, xx, yy)] = 2 * sim - 1
+    return m
 
 
 def template_axis(targCol):
@@ -157,8 +164,6 @@ def template_axis(targCol):
     n = np.hypot(rg, by)
     return (rg / n, by / n) if n > 1e-6 else (1.0, 0.0)
 
-
-PAINT_SIG = 0.03      # fixed history-smoothing kernel (model assumption)
 
 _GREY_C = None
 
@@ -187,53 +192,91 @@ def item_color_distinctiveness(items):
     return np.linalg.norm(vecs - vecs.mean(0, keepdims=True), axis=1)
 
 
+def item_footprint_mask(it, xx, yy, scale=1):
+    """Rendered footprint for one item, matching front_end.render()."""
+    to_px = lambda v: (v + 0.75) / 1.5 * IMG * scale
+    r_px = ITEM_R / 1.5 * IMG * scale
+    cx, cy = to_px(it["x"]), to_px(it["y"])
+    shape = it.get("shape", "circle")
+    if shape == "diamond":
+        return (np.abs(xx - cx) + np.abs(yy - cy)) < 1.3 * r_px
+    if shape == "square":
+        return (np.abs(xx - cx) < 0.95 * r_px) & (np.abs(yy - cy) < 0.95 * r_px)
+    if shape == "triangle":
+        return ((yy - cy > -0.9 * r_px)
+                & (np.abs(xx - cx) < 0.95 * r_px
+                   * (1 - (yy - cy + 0.9 * r_px) / (2.0 * r_px))))
+    if shape == "cross":
+        return (((np.abs(xx - cx) < 0.45 * r_px) & (np.abs(yy - cy) < 1.1 * r_px))
+                | ((np.abs(yy - cy) < 0.45 * r_px) & (np.abs(xx - cx) < 1.1 * r_px)))
+    return (xx - cx) ** 2 + (yy - cy) ** 2 < r_px ** 2
+
+
 def sensory_salience_map(items):
-    """Paint item color distinctiveness with a transparent background."""
+    """Paint item color distinctiveness as hard item footprints.
+
+    Background remains 0. The map is not blurred: P(x) is an item-level
+    salience signal, so the display keeps crisp object support instead
+    of introducing smoothing rims around every shape.
+    """
     m = np.zeros((IMG, IMG))
     yy, xx = np.mgrid[0:IMG, 0:IMG]
-    to_px = lambda v: (v + 0.75) / 1.5 * IMG
-    r_px = ITEM_R / 1.5 * IMG
     vals = item_color_distinctiveness(items) / color_distinctiveness_constant()
     for val, it in zip(vals, items):
-        cx, cy = to_px(it["x"]), to_px(it["y"])
-        shape = it.get("shape", "circle")
-        if shape == "diamond":
-            mask = (np.abs(xx - cx) + np.abs(yy - cy)) < 1.3 * r_px
-        elif shape == "square":
-            mask = (np.abs(xx - cx) < 0.95 * r_px) & (np.abs(yy - cy) < 0.95 * r_px)
-        elif shape == "triangle":
-            mask = ((yy - cy > -0.9 * r_px)
-                    & (np.abs(xx - cx) < 0.95 * r_px
-                       * (1 - (yy - cy + 0.9 * r_px) / (2.0 * r_px))))
-        elif shape == "cross":
-            mask = (((np.abs(xx - cx) < 0.45 * r_px) & (np.abs(yy - cy) < 1.1 * r_px))
-                    | ((np.abs(yy - cy) < 0.45 * r_px) & (np.abs(xx - cx) < 1.1 * r_px)))
-        else:
-            mask = (xx - cx) ** 2 + (yy - cy) ** 2 < r_px ** 2
-        m[mask] = val
-    return _gauss_blur(m, 2)
+        m[item_footprint_mask(it, xx, yy)] = val
+    return m
+
+
+def paint_history_footprints(items, vals):
+    """Paint selection history using each item's actual shape footprint."""
+    m = np.zeros((IMG, IMG))
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    for val, it in zip(vals, items):
+        m[item_footprint_mask(it, xx, yy)] = val
+    return m
+
+
+def target_color_evidence_map(items, targCol):
+    """Salience-weighted signed target-color evidence.
+
+    Each item's unsigned color distinctiveness supplies the magnitude.
+    Its opponent-color direction, projected onto the target-color axis,
+    supplies the sign. Thus more-salient opposite-color items produce
+    stronger negative evidence, while background remains zero.
+    """
+    m = np.zeros((IMG, IMG))
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    u = np.array(template_axis(targCol))
+    bg = np.asarray(COLORS[targCol], dtype=float)
+    sal = item_color_distinctiveness(items) / color_distinctiveness_constant()
+    for s, it in zip(sal, items):
+        rgb = np.asarray(COLORS[it["color"]], dtype=float)
+        vec = np.array([rgb[0] - rgb[1], rgb[2] - (rgb[0] + rgb[1]) / 2])
+        base = np.array([bg[0] - bg[1], bg[2] - (bg[0] + bg[1]) / 2])
+        diff = vec - base
+        n = np.hypot(diff[0], diff[1])
+        direction = float(np.dot(diff / n, u)) if n > 1e-9 else 1.0
+        m[item_footprint_mask(it, xx, yy)] = s * direction
+    return m
+
+
+def template_match_map(items, targCol, template_shape="circle"):
+    """Unified signed match to the search template, e.g. green circle.
+
+    Color contributes signed salience-weighted target-color evidence.
+    Shape contributes signed target-shape evidence: exact template
+    shape is positive and poor shape matches are negative. Both
+    components are painted as hard item footprints. The average gives one
+    interpretable template map in [-1, 1].
+    """
+    color = target_color_evidence_map(items, targCol)
+    signed_shape = signed_shape_match_map(items, template_shape)
+    return 0.5 * (color + signed_shape)
 
 
 def grey_color_constant():
-    """Fixed full-scale unit for the color channel: the strongest
-    |D_T| pixel of the canonical green/red set-size-6 display (the
-    notebook's Sec. 3 demo display - target slot 2, singleton slot 5
-    - so both pipelines share the constant exactly). Dividing by it
-    makes the color map greyscale (pixels in [-1, 1]), so g_C reads
-    as the priority delivered by a full-strength color pixel - the
-    target-shape channel, which is max-normalized and remapped to
-    [-1, 1]. The history kernel still uses peak 1, so beta = a fully
-    primed location."""
-    global _GREY_C
-    if _GREY_C is None:
-        pos, _ = item_positions(6)
-        items = [dict(x=pos[k][0], y=pos[k][1],
-                      color=("red" if k + 1 == 5 else "green"),
-                      shape=shape_for(k + 1, 2)) for k in range(6)]
-        maps = opponency_contrast(render(items))
-        u = template_axis("green")
-        _GREY_C = float(np.abs(u[0] * maps["RG"] + u[1] * maps["BY"]).max())
-    return _GREY_C
+    """Compatibility shim: color evidence now shares P's full-scale unit."""
+    return color_distinctiveness_constant()
 
 
 def item_centers(setsize):
@@ -243,55 +286,29 @@ def item_centers(setsize):
              int(round((p[0] + 0.75) / 1.5 * IMG))) for p in pos]
 
 
-def display_senses(setsize, targLoc, singLoc, targCol, singCol):
-    """One display -> the model's sensed evidence A [6, 3].
+def display_item_evidence(setsize, targLoc, singLoc, targCol, singCol):
+    """One display -> the model's item evidence A [6, 3].
 
-    Columns are P, C_T, S_T:
+    Columns are P, T, S_T:
     - P is goal-independent bottom-up color salience, with the
       background treated as absent.
-    - C_T is target-color evidence, the signed red/green contrast
-      projected onto the target color and scaled to greyscale units.
-    - S_T is target-shape evidence, scaled to [-1, 1].
-
-    This keeps the two goal components parallel in the model:
-    g_C*C_T + g_F*S_T."""
+    - T is unified search-template evidence in [-1, 1], combining
+      signed color and signed shape match.
+    - S_T is retained as a diagnostic shape-similarity map in [0, 1]."""
     pos, _ = item_positions(setsize)
     items = [dict(x=pos[k][0], y=pos[k][1],
                   color=(singCol if (k + 1) == singLoc and singCol != "none"
                          else targCol),
                   shape=shape_for(k + 1, targLoc)) for k in range(setsize)]
     img = render(items)
-    maps = opponency_contrast(img)
-    u = template_axis(targCol)
-    gmap = u[0] * maps["RG"] + u[1] * maps["BY"]     # signed D_T
-    gmap = gmap / grey_color_constant()              # greyscale: [-1, 1]
     pmap = sensory_salience_map(items)                       # background = 0
-    sm = shape_match_map(img)
-    sm = 2 * (sm / max(sm.max(), 1e-9)) - 1          # greyscale: [-1, 1]
-    chans = np.stack([pmap, gmap, sm])
+    tmap = template_match_map(items, targCol)                 # background = 0
+    sm = shape_match_map(img)                                # background = 0
+    chans = np.stack([pmap, tmap, sm])
     A = np.zeros((6, 3), dtype=np.float32)
     for j, (py, px) in enumerate(item_centers(setsize)):
         A[j] = chans[:, py, px]
     return A
-
-
-def kernel_matrix(setsize):
-    """BH[i, j]: item j's history-kernel bump (peak height 1 at its own
-    center - a fully primed own location senses as exactly beta)
-    sensed at item i's center. ~Identity at PAINT_SIG = 0.03."""
-    pos, _ = item_positions(setsize)
-    yy, xx = np.mgrid[0:IMG, 0:IMG]
-    px_per_unit = IMG / 1.5
-    cs = item_centers(setsize)
-    BH = np.zeros((6, 6), dtype=np.float32)
-    for j in range(setsize):
-        px = (pos[j][0] + 0.75) / 1.5 * IMG
-        py = (pos[j][1] + 0.75) / 1.5 * IMG
-        bump = np.exp(-((xx - px) ** 2 + (yy - py) ** 2)
-                      / (2 * (PAINT_SIG * px_per_unit) ** 2))
-        for i in range(setsize):
-            BH[i, j] = bump[cs[i][0], cs[i][1]]
-    return BH
 
 
 def main():
@@ -308,11 +325,10 @@ def main():
         dk = (int(k.setsize), int(k.targLoc), int(k.singLoc),
               k.targCol, k.singCol)
         if dk not in cache:
-            cache[dk] = display_senses(*dk)
+            cache[dk] = display_item_evidence(*dk)
         A[int(k.ctx)] = cache[dk]
     np.savez_compressed("dataset/senses.npz", A=A,
-                        GREY=np.array([grey_color_constant()]),
-                        BH6=kernel_matrix(6), BH4=kernel_matrix(4))
+                        GREY=np.array([grey_color_constant()]))
     merged = sacc.merge(keys, on=["setsize", "targLoc", "singLoc",
                                   "targCol", "singCol", "fixloc"], how="left")
     assert merged.ctx.notna().all()

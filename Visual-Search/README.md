@@ -11,22 +11,19 @@ distractor suppression?" — 12 eye-tracking studies, N = 354. The
 per-study fixation reports are NOT part of this repo (OSF:
 https://osf.io/q27ph/); point `pool_data.py` at their folder.
 
-## Model (7 fitted weights)
+## Model (4 fitted weights)
 
 ```
-M(x) = alpha_P*P(x) + g_C*C_T(x) + g_F*S_T(x)
-       + sum_j (beta_T*h_Tj + beta_D*h_Dj) * G(x - x_j)
-F_i = M(x_i)
+F_i = alpha_P*P_i + g_T*T_i + beta_T*h_Ti
 P(saccade -> i) = softmax over the current choice set
 ```
 
 | Weight | Meaning | Agent counterpart |
 | --- | --- | --- |
 | alpha_P | goal-independent sensory color-salience gain | sensory/obstacle gain |
-| g_C | target-color evidence gain | goal gain block |
-| g_F | target-shape evidence gain | goal gain block |
-| beta_T, beta_D | target/distractor history-field expression weights | history gain |
-| eta_T, eta_D | target/distractor trace accrual rates | memory update rate |
+| g_T | unified green-circle template evidence gain | goal gain block |
+| beta_T | target history-field expression weight | history gain |
+| eta_T | target trace accrual rate | memory update rate |
 
 Scope: first saccades only, launched from the display center; positions
 only (no latency); one population-level fit (no individual differences);
@@ -47,12 +44,9 @@ suppression/priming analyses.
 | File | Purpose |
 | --- | --- |
 | `pool_data.py` | Fixation reports → `dataset/saccades.csv` + `dataset/events.csv` |
-| `front_end.py` | The sensor: display rendering, Itti & Koch-style maps, ray scanning, item geometry |
-| `build_contexts.py` | Reconstructs every unique display and precomputes sensed fields (`dataset/senses.npz` + `dataset/saccades_ctx.csv`) |
+| `front_end.py` | Display rendering and item geometry |
+| `build_contexts.py` | Reconstructs every unique display and precomputes item evidence (`dataset/senses.npz` + `dataset/saccades_ctx.csv`) |
 | `data.py` | Shared tensors (choice sets, distances, visited, trial-ordered events) + the subject split |
-| `model.py` | `SearchModel` — the final model — and `load_final()` (`weights_final.json`) |
-| `fit.py` | Pooled MLE -> `weights_final.json`, `results_final.json` |
-| `reproduce.py` | Reproduction batteries on held-out people |
 | `tutorial_visual_search.ipynb` | Teaching notebook: builds, trains, evaluates the final model on the real data |
 
 Earlier model generations (v1 role-flag fits, the goal-late v2, the
@@ -65,15 +59,12 @@ and the git history holds the scripts.
 ```bash
 python pool_data.py --data_dir "<...>/search_data/Data Files" --out_dir dataset
 python build_contexts.py
-python fit.py                 # -> weights_final.json, results_final.json
-python reproduce.py
+jupyter lab tutorial_visual_search.ipynb
 ```
 
-## Diagnostics reported by the fit
+## Diagnostics reported in the notebook
 
 - Observed vs model-implied first-saccade rates (target / singleton /
   per-item nonsingleton baseline) — the oculomotor suppression effect.
-- Trace-model vs no-trace null (total NLL difference for 4 extra weights).
-- Refixation rate on saccades 2+, observed vs the no-IoR model's
-  prediction — the pre-registered check that decides whether a single
-  visited-item penalty gets added (model comparison, not assumption).
+- Held-out fit quality and learned weights.
+- Target-capture ANOVA for the target statistical-learning manipulation.
