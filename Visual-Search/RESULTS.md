@@ -1139,8 +1139,8 @@ window - now demonstrated exactly (completing the flat-window
 notes above), not because these data constrain one. Testing the
 window needs eccentricity variation or peripheral fixations.
 
-## FINAL FORM OF RECORD: six parameters, no attention window
-## (adopted, Han's call, 2026-09-12)
+## Previous record: six parameters, no attention window
+## (adopted, Han's call, 2026-09-12; superseded 2026-09-13)
 
 The attention window is REMOVED from the model of record, following
 the exact-tie demonstrations above. The complete model:
@@ -1271,3 +1271,108 @@ seaborn, pingouin (pip-installed into escaping_ball).
   section above); statements about the attention window from these
   fits must name the rule they assume.
 - Single split seed; no bootstrap intervals yet.
+
+## Superseded sensory-field record: initial P/S scaling
+## (adopted, Han's call, 2026-09-13; superseded by color-singleton P below)
+
+The visual-search model now matches the action-agent decomposition:
+
+  M(x)  = alpha_P * P(x) + g_C * C_T(x) + g_F * S_T(x)
+          + sum_j (beta_T h_Tj + beta_D h_Dj) * G(x - x_j)
+  F_i   = M(x_i)                       (sensed at item centers)
+  P(i)  = softmax(F)_i
+  h    <- (1 - eta) h + eta e          (leaky accumulators)
+
+P(x) was the goal-independent sensory presence/salience field. C_T(x)
+and S_T(x) are target-color and target-shape evidence, so both goal
+components have the same gain * evidence form. The history field is
+unchanged.
+
+The tutorial was reorganized around this structure: sensory field
+(Sec. 3), goal field (Sec. 4), history field (Sec. 5), and the final
+priority-map sum (Sec. 6). The old no-sensory notebook comparison was
+removed; the sensory-field model is now the model of record.
+
+Fit recipe: 200 epochs, Adam lr = 0.05, same subject split seed 0,
+dataset/senses.npz with A[ctx, item, field] = P, C_T, S_T. Fitted
+weights_final.json:
+
+  alpha_P -0.4952, g_C +0.3003, g_F +1.4032,
+  beta_T +2.1251, beta_D -0.4762, eta_T 0.6028, eta_D 0.1647
+
+Held-out NLL per saccade: 1.39755; train NLL per saccade: 1.41699.
+
+## Signed target-shape evidence check (2026-09-13)
+
+Han's follow-up: try making S_T(x) range from -1 to +1 like C_T(x),
+instead of 0 to 1. Implementation: the raw shape-match map is still
+max-normalized, then remapped as S_T = 2*S_raw - 1 in
+build_contexts.py and tutorial_visual_search.ipynb.
+
+Same 200-epoch recipe and split:
+
+  alpha_P -0.2827, g_C +0.3229, g_F +0.6994,
+  beta_T +2.1252, beta_D -0.4762, eta_T 0.6028, eta_D 0.1646
+
+Held-out NLL per saccade: 1.39752; train NLL per saccade: 1.41700.
+The difference from the 0-to-1 S_T run is tiny but favorable
+(-0.00003 held-out NLL). The main effect is scale/intercept
+redistribution: g_F is roughly halved, as expected when the shape
+contrast is stretched from [0, 1] to [-1, 1].
+
+## Signed sensory-presence evidence check (2026-09-13)
+
+Next check: also remap P(x) from [0, 1] to [-1, 1], so all three
+sensed fields P, C_T, and S_T share signed greyscale units. Same
+200-epoch recipe and split:
+
+  alpha_P -0.2398, g_C +0.3022, g_F +0.7014,
+  beta_T +2.1252, beta_D -0.4763, eta_T 0.6028, eta_D 0.1646
+
+Held-out NLL per saccade: 1.39755; train NLL per saccade: 1.41699.
+This is effectively tied with the prior variants but slightly worse
+than signed S_T with unsigned P (+0.00003 held-out NLL). Interpretation:
+signed P mostly reparameterizes the same weakly identified sensory
+offset/contrast degree of freedom.
+
+## Transparent-background sensory presence check (2026-09-13)
+
+Han's correction: instead of making the rendered background negative,
+treat it as absent. P(x) is now computed from the foreground mask of
+the rendered objects: background = 0, object presence is blurred and
+max-normalized to 1. C_T and S_T remain signed [-1, 1].
+
+Same 200-epoch recipe and split:
+
+  alpha_P -6.4372, g_C +0.3754, g_F +0.7291,
+  beta_T +2.1256, beta_D -0.4805, eta_T 0.6034, eta_D 0.1634
+
+Held-out NLL per saccade: 1.39686; train NLL per saccade: 1.41264.
+This is the best of the sensory-field variants tried here
+(-0.00066 vs signed S_T with unsigned contrast-P; -0.00069 vs signed
+P). At valid item centers, P ranges only 0.9679 to 1.0, so the large
+negative alpha_P should be read cautiously: much of it is a broad
+foreground/item penalty, with a small differential sensory component.
+
+## CURRENT FORM OF RECORD: color-singleton sensory salience (2026-09-13)
+
+Han's correction: raw sensory salience should make the color singleton
+more salient than the homogeneous items. P(x) now ignores the rendered
+background and computes item-level color distinctiveness in opponent
+coordinates: each item color is compared with the display's mean item
+color, divided by the canonical green/red singleton full-scale, and
+painted back onto the item's shape. Thus in the canonical six-item
+display, the red singleton reads near 1 and majority-color green items
+read near 0.2.
+
+S_T remains signed [-1, 1]. Same 200-epoch recipe and split:
+
+  alpha_P -2.3505, g_C -0.6527, g_F +0.7222,
+  beta_T +2.1254, beta_D -0.4795, eta_T 0.6031, eta_D 0.1634
+
+Held-out NLL per saccade: 1.39499; train NLL per saccade: 1.41246.
+This is the best sensory-field variant so far (-0.00187 vs
+transparent foreground presence, -0.00253 vs signed S_T with
+contrast-P). Interpretation: alpha_P is now a real bottom-up singleton
+salience/suppression term, and the color goal gain shifts because C_T
+no longer has to carry all singleton-related color structure.

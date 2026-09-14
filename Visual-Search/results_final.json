@@ -1,12 +1,13 @@
 {
  "params": {
-  "g_C": 0.3526,
-  "g_F": 1.3931,
-  "beta_T": 2.1252,
-  "beta_D": -0.4898,
-  "eta_T": 0.6029,
-  "eta_D": 0.1578
+  "alpha_P": -2.3505,
+  "g_C": -0.6527,
+  "g_F": 0.7222,
+  "beta_T": 2.1254,
+  "beta_D": -0.4795,
+  "eta_T": 0.6031,
+  "eta_D": 0.1634
  },
- "train_nll_per_saccade": 1.417005181312561,
- "test_nll_per_saccade": 1.397485375404358
+ "train_nll_per_saccade": 1.4124605655670166,
+ "test_nll_per_saccade": 1.3949919939041138
 }

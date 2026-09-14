@@ -5,10 +5,9 @@ colors, assign a context id to every unique (setsize, targLoc,
 singLoc, targCol, singCol, fixation) combination, render each unique
 display once (feature search: target circle among heterogeneous
 nontarget shapes, singleton in the opposite color), compute the
-pre-window evidence maps (rectified template/distractor color
-channels + the pixel-derived shape-match map), and SENSE each map at
-the item centers (display_senses) - the point-sensing readout
-F_i = P(x_i) adopted 2026-09-11 (see RESULTS). The cache is exact by
+pre-window sensory and goal-evidence maps, and SENSE each map at the
+item centers (display_senses) - the point-sensing readout F_i =
+P(x_i) adopted 2026-09-11 (see RESULTS). The cache is exact by
 construction: the model only ever looks at the priority map at those
 pixels.
 
@@ -26,13 +25,14 @@ All displays use the canonical green-target / red-singleton scheme
 Channel units are GREYSCALE: the color channel (signed
 template-axis contrast D_T) is divided by GREY_C - the strongest
 |D_T| pixel of the canonical green/red display - so its pixels lie
-in [-1, 1]; the shape channel is divided by its max, so it peaks at
-1. With the history kernel's peak-1 convention, every weight then
+in [-1, 1]; the shape channel is divided by its max and remapped to
+[-1, 1]. With the history kernel's peak-1 convention, every weight then
 reads the same way: priority delivered by a full-strength unit of
 its channel.
 
-Output: dataset/senses.npz -- A [ctx, 6, 2] (sensed greyscale
-channels), GREY [1] (the color constant, for the record),
+Output: dataset/senses.npz -- A [ctx, 6, 3] (sensed greyscale
+fields: bottom-up color salience P, target-color evidence C_T, target-shape
+evidence S_T), GREY [1] (the color constant, for the record),
 BH6/BH4 [6, 6] (sensed history kernel per set size). Plus
 dataset/saccades_ctx.csv (saccades with ctx ids).
 
@@ -42,7 +42,7 @@ Usage: python build_contexts.py
 import numpy as np
 import pandas as pd
 
-from front_end import (COLORS, IMG, _gauss_blur, item_positions,
+from front_end import (COLORS, IMG, ITEM_R, _gauss_blur, item_positions,
                        render, shape_for)
 
 
@@ -67,10 +67,11 @@ def opponency_contrast(img):
     An Itti-Koch-like center-surround front end that does not collapse
     into one unsigned salience map: it returns signed red-vs-green
     (RG) and blue-vs-yellow (BY) contrast maps, so the model can tell
-    which color direction differs from the surround, plus an unsigned
-    intensity/presence map (P). The goal later rotates the signed maps
-    into target-relative axes; fitted gains build the goal-modified
-    priority map.
+    which color direction differs from the surround. The function still
+    returns its legacy local-contrast P diagnostic, but display_senses()
+    writes the model-of-record P from item-level color distinctiveness
+    instead. The goal later rotates the signed maps into target-relative
+    axes; fitted gains build the goal-modified priority map.
     """
     r, g, b = img[..., 0], img[..., 1], img[..., 2]
     out = {}
@@ -80,10 +81,8 @@ def opponency_contrast(img):
             c += _gauss_blur(m, s_c) - _gauss_blur(m, s_s)   # signed
         c[:10, :] = c[-10:, :] = c[:, :10] = c[:, -10:] = 0
         out[name] = c
-    # presence: contrast of the color DEVIATION from the background -
-    # fires on any visible object, whatever its color (intensity alone
-    # is blind to items equiluminant with the background, and its
-    # nonzero background level created image-border artifacts)
+    # Legacy diagnostic: contrast of color deviation from the rendered
+    # background. This is no longer the model's sensory P channel.
     from front_end import BG
     dev = np.sqrt(((img - np.array(BG)) ** 2).sum(-1))
     p = np.zeros_like(dev)
@@ -164,6 +163,57 @@ PAINT_SIG = 0.03      # fixed history-smoothing kernel (model assumption)
 _GREY_C = None
 
 
+def color_distinctiveness_constant():
+    """Canonical red-vs-green singleton salience full-scale."""
+    pos, _ = item_positions(6)
+    items = [dict(x=pos[k][0], y=pos[k][1],
+                  color=("red" if k + 1 == 5 else "green"),
+                  shape=shape_for(k + 1, 2)) for k in range(6)]
+    vals = item_color_distinctiveness(items)
+    return max(float(vals.max()), 1e-9)
+
+
+def item_color_distinctiveness(items):
+    """Bottom-up item salience from color distinctiveness.
+
+    The background is transparent: it is not a competing color. Each
+    item is compared with the mean item color in opponent coordinates,
+    so a singleton color is more salient than the majority color."""
+    vecs = []
+    for it in items:
+        r, g, b = COLORS[it["color"]]
+        vecs.append([r - g, b - (r + g) / 2])
+    vecs = np.asarray(vecs, dtype=float)
+    return np.linalg.norm(vecs - vecs.mean(0, keepdims=True), axis=1)
+
+
+def sensory_salience_map(items):
+    """Paint item color distinctiveness with a transparent background."""
+    m = np.zeros((IMG, IMG))
+    yy, xx = np.mgrid[0:IMG, 0:IMG]
+    to_px = lambda v: (v + 0.75) / 1.5 * IMG
+    r_px = ITEM_R / 1.5 * IMG
+    vals = item_color_distinctiveness(items) / color_distinctiveness_constant()
+    for val, it in zip(vals, items):
+        cx, cy = to_px(it["x"]), to_px(it["y"])
+        shape = it.get("shape", "circle")
+        if shape == "diamond":
+            mask = (np.abs(xx - cx) + np.abs(yy - cy)) < 1.3 * r_px
+        elif shape == "square":
+            mask = (np.abs(xx - cx) < 0.95 * r_px) & (np.abs(yy - cy) < 0.95 * r_px)
+        elif shape == "triangle":
+            mask = ((yy - cy > -0.9 * r_px)
+                    & (np.abs(xx - cx) < 0.95 * r_px
+                       * (1 - (yy - cy + 0.9 * r_px) / (2.0 * r_px))))
+        elif shape == "cross":
+            mask = (((np.abs(xx - cx) < 0.45 * r_px) & (np.abs(yy - cy) < 1.1 * r_px))
+                    | ((np.abs(yy - cy) < 0.45 * r_px) & (np.abs(xx - cx) < 1.1 * r_px)))
+        else:
+            mask = (xx - cx) ** 2 + (yy - cy) ** 2 < r_px ** 2
+        m[mask] = val
+    return _gauss_blur(m, 2)
+
+
 def grey_color_constant():
     """Fixed full-scale unit for the color channel: the strongest
     |D_T| pixel of the canonical green/red set-size-6 display (the
@@ -171,9 +221,9 @@ def grey_color_constant():
     - so both pipelines share the constant exactly). Dividing by it
     makes the color map greyscale (pixels in [-1, 1]), so g_C reads
     as the priority delivered by a full-strength color pixel - the
-    same convention as the shape channel (max-normalized, peak 1)
-    and the history kernel (peak 1: beta = a fully primed
-    location)."""
+    target-shape channel, which is max-normalized and remapped to
+    [-1, 1]. The history kernel still uses peak 1, so beta = a fully
+    primed location."""
     global _GREY_C
     if _GREY_C is None:
         pos, _ = item_positions(6)
@@ -194,13 +244,17 @@ def item_centers(setsize):
 
 
 def display_senses(setsize, targLoc, singLoc, targCol, singCol):
-    """One display -> the model's sensed evidence A [6, 2]: the two
-    channel maps (SIGNED template-axis color contrast D_T, shape
-    match / its max) evaluated at each item's center, in GREYSCALE
-    units (color divided by grey_color_constant, shape by its max).
-    singCol only affects the rendering - the single goal gain g_C
-    weighs the signed projection of whatever colors are on screen.
-    Mirrors the notebook's channel_maps exactly."""
+    """One display -> the model's sensed evidence A [6, 3].
+
+    Columns are P, C_T, S_T:
+    - P is goal-independent bottom-up color salience, with the
+      background treated as absent.
+    - C_T is target-color evidence, the signed red/green contrast
+      projected onto the target color and scaled to greyscale units.
+    - S_T is target-shape evidence, scaled to [-1, 1].
+
+    This keeps the two goal components parallel in the model:
+    g_C*C_T + g_F*S_T."""
     pos, _ = item_positions(setsize)
     items = [dict(x=pos[k][0], y=pos[k][1],
                   color=(singCol if (k + 1) == singLoc and singCol != "none"
@@ -211,10 +265,11 @@ def display_senses(setsize, targLoc, singLoc, targCol, singCol):
     u = template_axis(targCol)
     gmap = u[0] * maps["RG"] + u[1] * maps["BY"]     # signed D_T
     gmap = gmap / grey_color_constant()              # greyscale: [-1, 1]
+    pmap = sensory_salience_map(items)                       # background = 0
     sm = shape_match_map(img)
-    sm = sm / max(sm.max(), 1e-9)                    # greyscale: peak 1
-    chans = np.stack([gmap, sm])
-    A = np.zeros((6, 2), dtype=np.float32)
+    sm = 2 * (sm / max(sm.max(), 1e-9)) - 1          # greyscale: [-1, 1]
+    chans = np.stack([pmap, gmap, sm])
+    A = np.zeros((6, 3), dtype=np.float32)
     for j, (py, px) in enumerate(item_centers(setsize)):
         A[j] = chans[:, py, px]
     return A
@@ -247,7 +302,7 @@ def main():
     keys["ctx"] = np.arange(len(keys))
     n = len(keys)
     print(f"{n} unique contexts")
-    A = np.zeros((n, 6, 2), dtype=np.float32)
+    A = np.zeros((n, 6, 3), dtype=np.float32)
     cache = {}
     for _, k in keys.iterrows():
         dk = (int(k.setsize), int(k.targLoc), int(k.singLoc),
