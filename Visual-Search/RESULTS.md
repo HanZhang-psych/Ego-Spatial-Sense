@@ -1376,3 +1376,128 @@ transparent foreground presence, -0.00253 vs signed S_T with
 contrast-P). Interpretation: alpha_P is now a real bottom-up singleton
 salience/suppression term, and the color goal gain shifts because C_T
 no longer has to carry all singleton-related color structure.
+
+## CURRENT FORM OF RECORD: unified signed template, target history
+## only (2026-09-14)
+
+Two structural simplifications land together with the tutorial
+rewrite (Han's call), and the model of record drops from seven
+parameters to four.
+
+**1. Unified goal template.** The separate color and shape goal
+channels (g_C * C_T + g_F * S_T) collapse into ONE signed template
+evidence T_i in [-1, 1]: signed color match and signed shape match,
+averaged per item. A green circle is strongly positive (target color
+AND target shape), a red square strongly negative, partial matches in
+between; one goal gain g_T scales it. Rationale: enhancement and
+suppression are not separately identified in these two-color displays
+anyway (the g_C/g_D ridge on record), and color and shape were
+already carrying one "is this the target" signal - averaging them into
+a single template map states that directly.
+
+**2. Distractor history removed.** The distractor-location trace
+(beta_D, eta_D) is dropped; only the target-location trace remains,
+sensed at item centers through the fixed sigma = 0.03 peak-1 kernel
+(unchanged).
+
+The complete model:
+
+  M(x)  = alpha_P * P(x) + g_T * T(x)
+          + sum_j beta_T h_Tj * G(x - x_j)
+  F_i   = M(x_i)                       (sensed at item centers)
+  P(i)  = softmax(F)_i
+  h_T  <- (1 - eta_T) h_T + eta_T e_T   (leaky accumulator)
+
+P(x) is the goal-independent bottom-up color-singleton salience field
+(unchanged from 2026-09-13); T(x) the unified signed template; the
+history field carries the target trace alone. Four learned
+parameters: alpha_P, g_T, beta_T, eta_T. The attention window stays
+outside the fitted model (first-saccade scope, all ring items
+iso-eccentric from center - a shared scalar absorbed by gain scale).
+
+Fit (114,232 first saccades; 267 train / 66 held-out subjects,
+seed 0; 300 epochs, Adam lr 0.05; Stilwell low-salience trials
+excluded from fitting, reserved for the 9b test):
+
+  alpha_P -0.050, g_T +1.339, beta_T +2.092, eta_T +0.588
+
+- alpha_P near zero and slightly negative: bottom-up color salience
+  neither attracts nor strongly suppresses first saccades once
+  template and history are in play.
+- g_T positive: the goal draws the eyes toward template-matching items.
+- beta_T / eta_T +2.09 / 0.59: strong, fast-turnover pull toward
+  recent target locations.
+
+Held-out (23,216 saccades, people the model never saw):
+
+- mean probability on the true choice 24.6% (chance 17.4%)
+- top-1 accuracy 44.3%
+- pseudo-R2 vs chance 0.197
+- held-out NLL 1.40365
+
+Modestly higher NLL than the seven-parameter sensory-field form
+(~1.395): the cost of merging the two goal channels and dropping the
+distractor trace, taken for a four-parameter model whose every term is
+identified and sign-interpretable. The model still beats every
+constructible memorization oracle (see the oracle-benchmark entry) -
+the graded target trace carries information no per-display or
+per-person frequency table can.
+
+### Section 9 evaluation, out-of-sample (held-out subjects; nothing
+### below refitted)
+
+All three signature panels score REGENERATED saccades - one draw per
+real held-out trial from the model's softmax, conditioned on each
+subject's actual history - through the same per-subject pipeline as
+the human data, with seaborn bootstrap 95% CIs and pingouin tests (as
+in the 2026-09-12 redesign).
+
+**9a Oculomotor suppression** (target / non-singleton / singleton,
+per-subject means over 66 held-out people):
+
+- suppression (non-singleton minus singleton): Human 7.1%,
+  t(65) = 10.79, p < .001, d = 1.21; Model 8.2%, t(65) = 23.35,
+  p < .001, d = 3.68.
+- Model rates 39.8 / 14.9 / 6.7. Below-baseline singleton suppression
+  reproduced. The model's larger t reflects one pooled parameter set
+  (its between-subject variance is sampling noise only; the gap
+  measures individual differences the model does not carry).
+
+**9b Salience gradient** (Stilwell counterfactual): the real held-out
+trials ARE the high-salience condition (green target, red singleton;
+9a's regenerated saccades); a second pass re-senses the SAME trials
+with a TEAL singleton (near the target color = low salience), keeping
+each subject's real history, and regenerates saccades.
+
+- suppression High 8.2% vs Low 1.9%; condition means (t / ns / s)
+  High 39.8 / 14.9 / 6.7, Low 37.1 / 14.1 / 12.2.
+- salience x item-type interaction, 2 x 2 rm-ANOVA over 66 held-out
+  subjects: F(1, 65) = 184.98, p < .001.
+- People reference (full 8-pair battery, stilwell_salience.py):
+  7.0% vs 11.3% singleton rate. The gradient falls out of the signed
+  template on colors the fit never saw - a near-target-color singleton
+  projects partly onto the template axis and escapes the negative
+  evidence a chromatically distant one takes.
+
+**9c Target statistical learning** (new panel, replacing the
+intertrial-priming panels): replay a synthetic block where the target
+appears at slot 2 on 70% of trials, keep the real displays and
+weights, regenerate saccades.
+
+- predicted first saccades to target: Uniform history 38.6% (likely
+  location) vs 38.7% (elsewhere) - flat; Biased history 69.4% (likely)
+  vs 29.6% (elsewhere).
+- history x target-location interaction, 2 x 2 rm-ANOVA over held-out
+  subjects: F(1, 65) = 10674, p < .001. The leaky target trace builds
+  a spatial prior for the likely location and applies it before the
+  display evidence is read out.
+
+**9d** redraws 9a-c into one presentation figure.
+
+### The spatial prior across trials (Section 10)
+
+Real trained target memories for one held-out person over a trial
+span: the item-level prior beta_T*h_T tilts toward recently-occupied
+target locations before each display appears. Across all held-out
+trials, the prior at the previous target location is +1.376 vs +0.142
+at other locations.
