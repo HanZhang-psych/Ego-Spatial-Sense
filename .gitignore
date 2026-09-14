@@ -7,3 +7,5 @@ MetaDrive-Driving/
 Ego_Spatial_Sense.pdf
 search_data/
 docs/
+.vscode/
+.venv
