@@ -111,6 +111,10 @@ def main():
     args = parser.parse_args()
     print(f"Using device: {args.device}")
 
+    # Fixed seed: the of-record fit is reproducible and converges (some
+    # initializations of the obstacle MLP diverge under this recipe).
+    torch.manual_seed(0)
+
     # Define input and target columns
     scan_columns = [f"scan_{i}" for i in range(args.num_features)]
 

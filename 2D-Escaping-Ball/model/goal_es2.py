@@ -6,47 +6,51 @@ import torch.nn as nn
 GRID = 8  # the spatial memory is a GRID x GRID leaky map over the arena
 
 
-class AdditiveSenseBlock(nn.Module):
-    """The obstacle sense of record: a proximity channel and a looming
-    channel, each with one learned scalar gain, summed.
+class MlpSenseBlock(nn.Module):
+    """The obstacle sense of record: a two-channel salience source -
+    proximity and looming - combined by a small shared MLP.
 
     Each LiDAR distance first passes through a sigmoid with learned per-ray
     sensitivity `k` (the psychophysics of closeness: near = strong, far =
-    weak, saturating at both ends).  The obstacle field is then a linear
-    combination of two channels built from the previous and current
-    closeness:
+    weak, saturating at both ends).  From the previous and current closeness
+    two per-ray channels are built:
 
-        obstacle(dir) = g_C * closeness_now
-                      + g_L * (closeness_now - closeness_prev) * closeness_now
+        proximity = closeness_now
+        looming   = (closeness_now - closeness_prev) * closeness_now
 
-    - `g_C * closeness_now` is the PROXIMITY channel: how close something is
-      right now (static standoff).
-    - `g_L * (closeness_now - closeness_prev) * closeness_now` is the
-      LOOMING channel: the change in closeness (approach) gated by current
+    - PROXIMITY is how close something is right now (static standoff).
+    - LOOMING is the change in closeness (approach) gated by current
       closeness, so approach only counts where something is already near.
 
-    This replaces the earlier looming-only block (model/es2.py
-    SpatialSenseBlock, obstacle = proj(closeness_now - closeness_prev) *
-    closeness_now, a learned nonlinear projection of the change signal).
-    The two channels are co-equal evidence sources combined additively - the
-    same shape as the visual-search model's F = g_C*color + g_F*shape -
-    rather than a single gated product, and each gain is one interpretable
-    scalar instead of an MLP.  Behavioral cloning on the expert
-    demonstrations settles on g_C ~ 1.0, g_L ~ 0 (proximity carries the
-    task; the change signal is nearly redundant when proximity is
-    available), while matching or slightly beating the looming-only agent on
-    throughput and safety across the demonstrated and stress regimes.
+    The obstacle field is a learned nonlinear function of that two-channel
+    source, applied per ray with shared weights:
+
+        obstacle(dir) = MLP([proximity, looming])
+
+    This is the salience-side analog of the goal/history `goal_gain` MLP: a
+    learned transfer function from sensed physics to signal strength.  It
+    supersedes the additive linear combiner (obstacle = g_C * proximity
+    + g_L * looming), of which it is the direct nonlinear generalization -
+    the MLP can represent that weighted sum as a special case and, beyond
+    it, nonlinear interactions between proximity and looming.  On the expert
+    demonstrations it fits markedly better (lower cloning MSE) and, at
+    matched goal throughput, collides less across the demonstrated and
+    stress regimes; see RESULTS_goal_es2.md.
 
     The input is the full two-scan vector (prev | current) so the dataloader
     and evaluation harness are unchanged.
     """
 
-    def __init__(self, sensing_range: float, num_features: int = 360):
+    def __init__(self, sensing_range: float, num_features: int = 360,
+                 hidden: int = 8):
         super().__init__()
         k_init_value = self.inverse_sigmoid(sensing_range, torch.tensor([0.01]))
         self.k = nn.Parameter(torch.full((num_features,), k_init_value.item()))
-        self.g_C = nn.Parameter(torch.tensor(1.0))   # proximity gain
-        self.g_L = nn.Parameter(torch.tensor(1.0))   # looming gain
+        self.mlp = nn.Sequential(
+            nn.Linear(2, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, 1),
+        )
 
     def inverse_sigmoid(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return (-1 / x) * torch.log(y / (2 - y))
@@ -63,7 +67,10 @@ class AdditiveSenseBlock(nn.Module):
         closeness_now = self.sigmoid(sample_next)
         looming = (closeness_now - closeness_prev) * closeness_now
 
-        return self.g_C * closeness_now + self.g_L * looming
+        # per-ray salience source S(dir) = [proximity, looming]; the MLP acts
+        # on the last dim (2 -> hidden -> 1), broadcast over batch and rays.
+        channels = torch.stack([closeness_now, looming], dim=-1)
+        return self.mlp(channels).squeeze(-1)
 
 
 class GoalEs2Model(nn.Module):
@@ -71,9 +78,9 @@ class GoalEs2Model(nn.Module):
 
     Network input: previous LiDAR scan | current LiDAR scan | goal dx/dy.
 
-    The obstacle field is the additive proximity + looming sense of
-    AdditiveSenseBlock (obstacle = g_C * closeness_now
-    + g_L * (closeness_now - closeness_prev) * closeness_now).
+    The obstacle field is the MLP obstacle sense of MlpSenseBlock: a two-
+    channel salience source (proximity and looming) mapped to a per-ray
+    field by a small shared MLP (obstacle = MLP([proximity, looming])).
 
     The history field comes from the model's own spatial memory - a leaky
     accumulator over an 8x8 grid of the arena in WORLD coordinates
@@ -104,7 +111,7 @@ class GoalEs2Model(nn.Module):
         self.num_features = num_features
         self.sensing_range = sensing_range
 
-        self.spatial_sense_block = AdditiveSenseBlock(
+        self.spatial_sense_block = MlpSenseBlock(
             sensing_range=sensing_range, num_features=num_features
         )
         self.goal_gain = nn.Sequential(

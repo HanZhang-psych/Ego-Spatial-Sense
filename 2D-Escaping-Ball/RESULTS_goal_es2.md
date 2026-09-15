@@ -43,7 +43,7 @@ then adds direct geometric fields for the visible goal and the world-space
 history trace:
 
 ```text
-obstacle_field = ES2(previous_scan, current_scan)
+obstacle_field = obstacle_mlp([proximity, looming])   # per-ray, from previous+current scan
 goal_field = goal_gain(distance_to_goal) * cos(ray - goal_bearing)
 history_field = history_gain(distance_to_history) * cos(ray - history_bearing)
 
@@ -65,23 +65,25 @@ strength before anything is combined — the same job, done with different
 machinery:
 
 - **Obstacle side**: a fixed sigmoid family with learned per-ray
-  sensitivity `k` maps distance to perceived closeness; the looming delta
-  then passes through `delta_proj` (two stacked linears with no
-  nonlinearity, i.e. an implicit scalar gain + offset). Constrained
-  psychophysics: the curve's shape is assumed, only its sensitivity is
-  learned.
+  sensitivity `k` maps distance to perceived closeness; from the previous
+  and current closeness two per-ray channels are formed - proximity and
+  looming - and a small free-form MLP (`obstacle_mlp`) maps that pair to
+  obstacle strength. The front-end curve's shape is assumed (only its
+  sensitivity `k` is learned), while the combination of the two channels
+  is itself learned.
 - **Goal and history sides**: a free-form ReLU MLP (`goal_gain`,
   `history_gain`) maps distance to field strength, multiplied by fixed
   cosine geometry for direction. Nonparametric psychophysics: the curve's
   shape itself is learned.
 
-So the goal/history gain MLPs are the conceptual analog of the obstacle
-sigmoid — a learned transfer function from a physical quantity (distance)
-to signal strength. The difference is what the output means: the obstacle
-curve outputs *sensory* strength (perceived proximity/looming), while the
-goal and history curves output *relevance* (top-down pull). One transduces
-physics; the others transduce task value — but structurally all three are
-psychophysical transforms feeding fields in the same 360-ray space.
+So all three channels use a learned transfer function from a physical
+quantity to signal strength — the obstacle side an MLP over [proximity,
+looming], the goal and history sides an MLP over distance. The difference
+is what the output means: the obstacle network outputs *sensory* strength
+(perceived proximity/looming), while the goal and history curves output
+*relevance* (top-down pull). One transduces physics; the others transduce
+task value — but structurally all three are learned psychophysical
+transforms feeding fields in the same 360-ray space.
 
 A consequence: unlike the visual-search model, there is no single scalar
 channel gain (no `g_C`/`g_F` analog) — channel strength is
@@ -105,6 +107,55 @@ dedicated pathway that never passes through the obstacle psychophysics, so
 there is no goal-free version of that channel being modified. Search:
 goal-modulation of a general channel; agent: goal-dedicated transduction.
 
+## Obstacle sense of record: MLP over [proximity, looming] (2026-09-15)
+
+The obstacle sense is now `MlpSenseBlock` (`model/goal_es2.py`):
+proximity (`closeness_now`) and looming
+(`(closeness_now - closeness_prev) * closeness_now`) are formed per ray as
+before, then a small shared MLP maps that two-channel source to obstacle
+strength — `obstacle(dir) = MLP([proximity, looming])`. This supersedes
+the additive linear combiner
+`g_C * proximity + g_L * looming` (commit `8f3ebac`), of which it is the
+direct nonlinear generalization (the MLP can represent that weighted sum
+as a special case). The `[proximity, looming]` source and the sigmoid
+front end with learned per-ray `k` are unchanged; only the combiner
+changed, from a two-scalar linear sum to a `2 -> 8 -> 1` MLP (+31
+parameters). It is the salience-side analog of the `goal_gain` MLP, so all
+three field channels now use a learned transfer function.
+
+Comparison, both trained from scratch on the same demonstrations
+(`data_goal_unbiased_360.csv`) and recipe (batch 64, Adam 1e-3, MSE,
+plateau scheduler), same seed, differing only in the combiner:
+
+```text
+                    cloning MSE (150 ep)   cloning MSE (500 ep)
+additive (linear)   0.233                  0.034
+MLP over channels   0.029                  0.004
+```
+
+The MLP fits the expert ~8x better. In the continuous reach-avoid task,
+at matched goal throughput it collides less across every stress regime
+tried (5 seeds, 3000 steps; identical worlds across models):
+
+```text
+config            additive g/min  c/min   MLP g/min  c/min
+base (10, 1x)     63.9   0.00             64.3   0.00
+speed 2x          71.8   0.90             68.2   0.50
+speed 3x          67.9   2.40             67.8   1.70
+dense 20          42.7   0.70             40.5   0.50
+dense 40          18.7   7.90             19.8   5.40
+```
+
+Throughput is a wash; collisions fall ~30-44% in every stressed
+condition. The earlier worry that touching the looming channel would
+hurt at high ball speed did not materialize - the MLP keeps looming as a
+channel and is, if anything, safest relative to additive at speed 2x. The
+of-record checkpoint `pretrained/goal_es2.pth` is the 500-epoch MLP fit
+(seed-pinned in `train_goal_es2.py` for a reproducible, converged run);
+the three-model comparison sweeps in `results_compare/` and the notebook
+Section 6 were regenerated on this model. Baselines (`goal_mlp`,
+`goal_transformer`) are the recorded runs, reused unchanged.
+
 ## Reproduction
 
 Run commands from `2D-Escaping-Ball/`.
@@ -127,20 +178,22 @@ python3 train_goal_es2.py \
   --data_path dataset/data_goal_unbiased_360.csv \
   --model_path pretrained/goal_es2.pth \
   --log_path loss_goal_es2.csv \
-  --disable_history \
   --num_features 360 \
-  --num_epochs 150 \
+  --num_epochs 500 \
   --device cpu
 ```
 
+Cloning never uses the memory (`forward()` without a `history_field`
+ignores `beta_H`), so no flag is needed to train the history-disabled
+model of record.
+
 Evaluate on the continuous reach-avoid task (the evaluation of record —
 it mirrors the expert-demo structure: a persistent world where reaching a
-goal spawns the next one, no resets; add `--disable_history` for the
-ablated model):
+goal spawns the next one, no resets):
 
 ```bash
 python3 evaluate_goal_es2.py \
-  --model_path pretrained/goal_es2.pth --disable_history \
+  --model_path pretrained/goal_es2.pth \
   --max_steps 6000 \
   --num_seeds 3
 ```

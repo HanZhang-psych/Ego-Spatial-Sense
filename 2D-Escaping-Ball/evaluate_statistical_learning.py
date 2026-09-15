@@ -38,6 +38,7 @@ Three stages (the full chain; run any subset via --stages):
 import argparse
 import csv
 import math
+import os
 import random
 
 import torch
@@ -203,10 +204,11 @@ def main():
     parser.add_argument("--demo_trials", type=int, default=200)
     parser.add_argument("--deploy_trials", type=int, default=180)
     parser.add_argument("--switch", type=int, default=90)
-    parser.add_argument("--num_seeds", type=int, default=6)
+    parser.add_argument("--num_seeds", type=int, default=10)
+    parser.add_argument("--block", type=int, default=10)
     parser.add_argument("--random_seed", type=int, default=42)
-    parser.add_argument("--drift_csv", default="",
-                        help="optional CSV for the deploy stage's per-trial drift")
+    parser.add_argument("--out_dir", default="results_compare",
+                        help="dir for statlearn_drift.csv / statlearn_params.csv")
     args = parser.parse_args()
 
     model = GoalEs2Model(num_features=args.num_features)
@@ -223,8 +225,9 @@ def main():
                                    args.random_seed, args.demo_trials,
                                    args.demo_trials, args, record_rows=True)
     td = [d for d in tdrifts if not math.isnan(d)]
+    teacher_drift = sum(td) / len(td)
     print(f"   {len(rows)} goal-free rows; teacher leftward drift "
-          f"{sum(td)/len(td):+.2f} px/step", flush=True)
+          f"{teacher_drift:+.2f} px/step", flush=True)
 
     print("2. FIT (beta_H, eta), policy frozen...", flush=True)
     beta_hat, eta_hat, mse = fit_history_params(model, rows, goal_seq, args)
@@ -232,31 +235,49 @@ def main():
           f"eta* {args.eta_star} -> {eta_hat:.3f}   (MSE {mse:.5f})",
           flush=True)
 
-    print(f"3. DEPLOY fitted student: bias for {args.switch} trials, "
+    print(f"3. DEPLOY fitted student and the beta_H = 0 control, "
+          f"{args.num_seeds} seeds each: bias for {args.switch} trials, "
           f"then 50/50...", flush=True)
-    writer = None
-    if args.drift_csv:
-        fh = open(args.drift_csv, "w", newline="")
-        writer = csv.writer(fh)
-        writer.writerow(["seed", "trial", "drift"])
-    for i in range(args.num_seeds):
-        seed = 100 + i
-        _, _, drifts = play(model, beta_hat, eta_hat, seed,
-                            args.deploy_trials, args.switch, args)
-        first = [d for t, d in enumerate(drifts)
-                 if t < args.switch and not math.isnan(d)]
-        second = [d for t, d in enumerate(drifts)
-                  if t >= args.switch and not math.isnan(d)]
-        print(f"   seed {seed}: drift biased-half {sum(first)/len(first):+.2f}"
-              f"  unbiased-half {sum(second)/len(second):+.2f} px/step",
-              flush=True)
-        if writer:
-            for t, d in enumerate(drifts):
-                if not math.isnan(d):
-                    writer.writerow([seed, t, f"{d:.4f}"])
-    if writer:
-        fh.close()
-        print(f"   per-trial drift written to {args.drift_csv}")
+
+    def run_arm(beta):
+        curves = []
+        for i in range(args.num_seeds):
+            _, _, drifts = play(model, beta, eta_hat, 100 + i,
+                                args.deploy_trials, args.switch, args)
+            first = [d for t, d in enumerate(drifts)
+                     if t < args.switch and not math.isnan(d)]
+            second = [d for t, d in enumerate(drifts)
+                      if t >= args.switch and not math.isnan(d)]
+            print(f"   beta={beta:.3f} seed {100 + i}: biased-half "
+                  f"{sum(first)/len(first):+.2f}  unbiased-half "
+                  f"{sum(second)/len(second):+.2f} px/step", flush=True)
+            curves.append(drifts)
+        return curves
+
+    fitted = run_arm(beta_hat)
+    control = run_arm(0.0)
+
+    # Write the results the notebook loads (it no longer runs this chain).
+    os.makedirs(args.out_dir, exist_ok=True)
+    drift_path = os.path.join(args.out_dir, "statlearn_drift.csv")
+    with open(drift_path, "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["arm", "seed", "trial", "drift"])
+        for arm, curves in [("fitted", fitted), ("control", control)]:
+            for i, drifts in enumerate(curves):
+                for t, d in enumerate(drifts):
+                    if not math.isnan(d):
+                        w.writerow([arm, 100 + i, t, f"{d:.5f}"])
+    params_path = os.path.join(args.out_dir, "statlearn_params.csv")
+    with open(params_path, "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["beta_star", "eta_star", "beta_hat", "eta_hat", "fit_mse",
+                    "teacher_drift", "switch", "deploy_trials", "num_seeds",
+                    "block"])
+        w.writerow([args.beta_star, args.eta_star, f"{beta_hat:.5f}",
+                    f"{eta_hat:.5f}", f"{mse:.6f}", f"{teacher_drift:.5f}",
+                    args.switch, args.deploy_trials, args.num_seeds, args.block])
+    print(f"   wrote {drift_path} and {params_path}", flush=True)
 
 
 if __name__ == "__main__":
