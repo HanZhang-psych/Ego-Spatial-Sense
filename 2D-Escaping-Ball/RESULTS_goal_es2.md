@@ -86,17 +86,18 @@ task value — but structurally all three are learned psychophysical
 transforms feeding fields in the same 360-ray space.
 
 A consequence: unlike the visual-search model, there is no single scalar
-channel gain (no `g_C`/`g_F` analog) — channel strength is
+channel weight (no `w_S`/`w_G`/`w_H` analog) — channel strength is
 distance-dependent by construction, so comparing channels means comparing
 curves, not numbers. `beta_H` is the one named scalar (analogous to the
-search model's `beta`s), kept so the history strength stays readable. We
-keep this asymmetric structure deliberately, for simplicity.
+search model's history weight `w_H`), kept so the history strength stays
+readable. We keep this asymmetric structure deliberately, for simplicity.
 
 How the goal reaches the sensory input also differs between the two
 models, in a precise way. In one sense both do the same thing — convert
-sensed physics into task-signed relevance: the search model's `D_T` takes
-the raw color-contrast the retina delivers and re-signs it by the target
-color, and the agent's goal field takes a sensed physical object (the
+sensed physics into task-signed relevance: the search model's goal
+evidence `G` takes the raw color-contrast the retina delivers and re-signs
+it by the target color, and the agent's goal field takes a sensed physical
+object (the
 visible goal's distance and bearing) and converts it into signed pull.
 Neither goal conjures evidence from nowhere; both re-weight evidence
 originating in physical stimuli. The residual difference is architectural:
