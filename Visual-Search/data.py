@@ -4,7 +4,6 @@ build_tensors() turns dataset/saccades_ctx.csv + dataset/events.csv
 into the tensors every fit and analysis uses: per-saccade choice sets,
 choices, item roles, distances, and the
 per-subject trial-ordered event maps that drive the memory traces.
-subject_split() is the standard held-out-people split (seed 0, 20%).
 """
 
 import numpy as np
@@ -68,12 +67,3 @@ def build_tensors(sacc, ev):
     return sacc, dict(eT=eT, eD=eD, si=torch.tensor(sacc.si.values),
                       ti=torch.tensor(sacc.ti.values), d=d, valid=valid,
                       choice=choice)
-
-
-def subject_split(tt, frac=0.2, seed=0):
-    S = tt["eT"].shape[0]
-    rng = np.random.default_rng(seed)
-    test_subj = torch.zeros(S, dtype=torch.bool)
-    test_subj[rng.choice(S, int(round(S * frac)), replace=False)] = True
-    test = test_subj[tt["si"]]
-    return ~test, test
