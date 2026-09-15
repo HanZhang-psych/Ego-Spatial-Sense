@@ -39,14 +39,14 @@ Both additions earn their keep on held-out subjects, not just in-sample.
 
 | Weight | Estimate | Reading |
 | --- | --- | --- |
-| g_T | **+3.01** | template gain: attend the target's features |
+| w_G | **+3.01** | template gain: attend the target's features |
 | g_S | **−1.81** | salience gain: singleton written *below* a plain nontarget — suppression as negative writing |
-| beta_T / eta_T | **+1.87 / 0.63** | strong, fast-turnover attraction to prior target locations |
+| w_H / eta_H | **+1.87 / 0.63** | strong, fast-turnover attraction to prior target locations |
 | beta_D / eta_D | **−0.27 / 0.17** | weaker, ~4x slower suppressive trace on prior singleton locations |
 | g_I | **−2.01** | already-visited items are strongly penalized |
 | k | 0.41 | envelope falloff shallow (see caveat) |
 
-Estimates are stable across the with/without-IoR variants (g_T 3.18 vs
+Estimates are stable across the with/without-IoR variants (w_G 3.18 vs
 3.01, g_S −1.81 both, β/η essentially unchanged) — the IoR weight
 absorbs refixation structure without disturbing the suppression or
 history story.
@@ -63,7 +63,7 @@ First saccades, singleton present:
 
 Suppression-below-baseline ordering reproduced (source paper: 42.0 /
 7.9 / 14.2 under slightly different exclusions); the model over-guides
-— one g_T shared across saccade indices compromises between first
+— one w_G shared across saccade indices compromises between first
 saccades and the better-guided later ones.
 
 Refixations (saccades 2+, held-out): observed **1.15%**; no-IoR model
@@ -94,8 +94,8 @@ Consequences: (1) the earlier "wide attention window" reading is
 rule-conditional — flat under the agent-inherited multiplicative
 entry, a real distance cost under additive entry; (2) history and IoR
 conclusions are rule-invariant (beta, eta, g_I essentially identical
-across the two variants); (3) g_T is not comparable across rules
-(multiplicative g_T multiplies through the envelope). Deciding ⊗
+across the two variants); (3) w_G is not comparable across rules
+(multiplicative w_G multiplies through the envelope). Deciding ⊗
 needs geometry these iso-eccentric rings do not provide (larger or
 non-ring displays, or per-channel falloffs).
 
@@ -108,11 +108,11 @@ saccades), refit from scratch with the same pipeline:
 
 | Weight | generating | recovered | rel. err |
 | --- | --- | --- | --- |
-| g_T | 3.010 | 2.944 | 2.2% |
+| w_G | 3.010 | 2.944 | 2.2% |
 | g_S | −1.808 | −1.788 | 1.1% |
-| beta_T | 1.868 | 1.862 | 0.3% |
+| w_H | 1.868 | 1.862 | 0.3% |
 | beta_D | −0.270 | −0.241 | 10.6% |
-| eta_T | 0.627 | 0.630 | 0.4% |
+| eta_H | 0.627 | 0.630 | 0.4% |
 | eta_D | 0.173 | 0.181 | 4.7% |
 | g_I | −2.005 | −1.973 | 1.6% |
 | k | 0.411 | 0.528 | 28.6% |
@@ -181,8 +181,8 @@ split, 10 weights.
   and reconstruction noise. The v2 model still beats v1's no-trace
   null (1.3665) using no flags at all.
 - **History and IoR are downstream of perception, as claimed**: their
-  weights survive the front-end swap essentially unchanged (beta_T
-  1.71 vs 1.87; beta_D -0.24 vs -0.27; eta_T 0.643 vs 0.627; eta_D
+  weights survive the front-end swap essentially unchanged (w_H
+  1.71 vs 1.87; beta_D -0.24 vs -0.27; eta_H 0.643 vs 0.627; eta_D
   0.196 vs 0.173; g_I -2.39 vs -2.01).
 - **Suppression-mechanism comparison (nested, held-out):** full model
   (g_simS and w_sal both free) 1.32879; color-rejection only 1.32941;
@@ -230,8 +230,8 @@ the spatial sources (traces, IoR).
   the built-in near-weighting express structure the flags cannot.
 - **Sanity check passed**: the orthogonal-axis gain idles at ~0
   (g_O = −0.005); the template direction alone carries the color work.
-- **Third front-end, same history/IoR weights**: beta_T 1.87,
-  beta_D −0.27, eta_T 0.630, eta_D 0.193, g_I −2.15 — the selection-
+- **Third front-end, same history/IoR weights**: w_H 1.87,
+  beta_D −0.27, eta_H 0.630, eta_D 0.193, g_I −2.15 — the selection-
   history and IoR layer is invariant to every perception swap tried.
 - **The attention window, estimated in its sensor-native place.**
   The initial v2.1 hand-set the sensor's radial falloff (exp(−2r))
@@ -245,8 +245,8 @@ the spatial sources (traces, IoR).
   artifact of estimating the window in the wrong place (multiplying
   item utilities) under the wrong combination rule. The hand-set
   constant (2.0) happened to be near-optimal, which is why freeing it
-  changed little else (history/IoR weights again unchanged: beta_T
-  1.87, beta_D -0.26, eta_T 0.630, eta_D 0.201, g_I -2.15).
+  changed little else (history/IoR weights again unchanged: w_H
+  1.87, beta_D -0.26, eta_H 0.630, eta_D 0.201, g_I -2.15).
 
 ## Window-form comparison (results_window_sigmoid/free.json)
 
@@ -272,7 +272,7 @@ Three shapes for the sensor-readout attention window, same split:
   *chooses* the low-parameter form. The restriction is selected by
   the data, not imposed.
 - History/IoR weights unchanged across all three (sixth front-end or
-  window variation with beta_T 1.87, beta_D -0.26, eta_T 0.63,
+  window variation with w_H 1.87, beta_D -0.26, eta_H 0.63,
   eta_D 0.20, g_I -2.15).
 
 ## History ordering: inside vs outside the window
@@ -298,7 +298,7 @@ statement (a single gate over the whole map). Notes:
 - With history inside, the window recovers a genuine reach:
   r0 = 0.49 (half-height at the ring radius), k = 3.4 — a plateau it
   did not show when forced to serve the stimulus alone. History
-  amplitudes rescale accordingly (beta_T 4.45, beta_D -0.53,
+  amplitudes rescale accordingly (w_H 4.45, beta_D -0.53,
   g_I -6.30 raw; effective strengths at item distances comparable to
   before).
 - Anticipation survives: pre-onset the window is centered at fixation
@@ -383,8 +383,8 @@ circles - accidentally a shape-singleton display, which the source
 studies' inclusion criteria specifically avoid. Corrected: nontarget
 shapes are heterogeneous (circle/square/triangle/cross), matching the
 feature-search paradigm. Refit on rebuilt contexts: every
-psychological parameter unchanged to two decimals (beta_T 1.87,
-beta_D -0.26, eta_T 0.63, eta_D 0.20, g_I -2.10); held-out NLL 1.2471
+psychological parameter unchanged to two decimals (w_H 1.87,
+beta_D -0.26, eta_H 0.63, eta_D 0.20, g_I -2.10); held-out NLL 1.2471
 (vs 1.2408 before) - shape enters the model only through the analytic
 form channel, so the fit is invariant as the architecture predicts.
 Parameter audit: set size (6 per study; Hamblin 4), colors (including
@@ -440,7 +440,7 @@ A minimalization pass (driven by Han) settled the perceptual module at
 two color terms plus shape:
 
   F = window x relu( a*(target-color contrast) - b*(distractor-color
-      contrast) ) + g_form*shape + windowed( beta_T*h_T + beta_D*h_D
+      contrast) ) + g_form*shape + windowed( w_H*H + beta_D*h_D
       + g_I*visited )
 
 Ten weights. Decisions and their held-out prices (test NLL; noise
@@ -488,7 +488,7 @@ flattened the window trying to rescue it). Shape stays OUTSIDE the
 window:
 
   F = window x [ relu(a*targetColor - b*distractorColor)
-                 + beta_T*h_T + beta_D*h_D + g_I*visited ] + g_form*shape
+                 + w_H*H + beta_D*h_D + g_I*visited ] + g_form*shape
 
 Architecturally this converges with the agent, which never had one
 shared window (the obstacle channel runs through the per-ray
@@ -580,7 +580,7 @@ because it is theoretically defined (the ego-anchored window), not
 because first-saccade data constrain it. This also dissolves the
 gating fork: with one vantage point, gated and ungated shape are
 reparameterizations of each other. Nine weights remain: a, b,
-g_form, k, r0, beta_T, beta_D, eta_T, eta_D.
+g_form, k, r0, w_H, beta_D, eta_H, eta_D.
 
 Fits (124,834 first saccades; same subject split):
 
@@ -652,7 +652,7 @@ subjects unless noted):
 The model beats every constructible memorization benchmark -
 including tables that know the display perfectly, the discrete
 priming conditions, or the individual person. The margin comes from
-the graded trace history: h_T/h_D accumulate over many trials with
+the graded trace history: H/h_D accumulate over many trials with
 learned decays, and that continuous state predicts more than any
 discrete conditioning can tabulate. Consequence: these oracles are
 floors for good models here, not ceilings.
@@ -811,7 +811,7 @@ one-sided basis, with a ~ 0, no longer supplies.
 ## Notation of record
 
 Renamed for consistency (Han's call, 2026-09-11): the stimulus
-gains are now g_T (target-color enhancement; was a), g_D
+gains are now w_G (target-color enhancement; was a), g_D
 (distractor-color suppression; was b), and g_F (shape/form; was
 g_form) - one g_* family alongside beta_* (history gains), eta_*
 (memory speeds), and k/r0 (window). Pure renaming: no refit, same
@@ -823,7 +823,7 @@ the names in use at the time.
 
 The model of record is now literally the tutorial's construction:
 a PRE-WINDOW priority map - goal-modified salience plus a history
-FIELD (each item's beta_T*h_T + beta_D*h_D placed at its location
+FIELD (each item's w_H*H + beta_D*h_D placed at its location
 and smoothed with a fixed sigma = 0.09 kernel, a stated model
 assumption) - multiplied by the attention window pixel by pixel,
 then read out as each item's sector average. The former
@@ -833,12 +833,12 @@ pixel computation), no separate per-item history term (the painted
 field's binned geometry is the precomputed HM matrix), and shape
 rides inside the pre-window map like everything else.
 
-Numbers: first fit hit an optimization wall (1.41897; beta_T 14.6,
-eta_T pinned 0.997 - the unnormalized HM mass ~0.135 ill-scaled the
+Numbers: first fit hit an optimization wall (1.41897; w_H 14.6,
+eta_H pinned 0.997 - the unnormalized HM mass ~0.135 ill-scaled the
 problem). CORRECTION (caught later): the intended HM normalization
 was reported as applied here but had never landed in the file; the
 1.39368 result below was fit with UNNORMALIZED HM, rescued by 600
-epochs alone (its beta_T = 17.6 was absorbing the 0.135 mass). The
+epochs alone (its w_H = 17.6 was absorbing the 0.135 mass). The
 normalization went in verified later - see the sigma = 0.03 entry.
 600 epochs: held-out NLL 1.39368 - BETTER than the per-item/ray
 form's 1.39920 (~125 total). Batteries:
@@ -850,7 +850,7 @@ correctly ordered though over-suppressed (5.2 / 9.7 vs obs
 Two parameter-level shifts on record: g_D fits to ~0 (-0.014) - in
 this basis suppression is carried by RELEGATION (the singleton
 earns no target-color boost) plus location history, and the
-salience gradient arises from partial g_T enhancement of
+salience gradient arises from partial w_G enhancement of
 near-target colors; and r0 fits beyond the display (1.47), the
 window going fully flat - the scope note made parametric.
 
@@ -886,7 +886,7 @@ never actually been written to the file (an unverified patch,
 reported as applied - now corrected above). With the normalization
 in and VERIFIED (diagonal sums exactly 1), sigma = 0.03 fits best
 of all forms: held-out NLL 1.39041 (vs 1.39368 unnormalized
-sigma = 0.09; 1.39920 per-item), with readable parameters (beta_T
+sigma = 0.09; 1.39920 per-item), with readable parameters (w_H
 4.62, beta_D -1.08, eta 0.60/0.16) and all batteries intact
 (suppression 43.0/7.0/13.0; priming 74.8/35.5, 4.0/7.4; Stilwell
 gradient ordered). Normalization makes sigma control spread only,
@@ -903,7 +903,7 @@ sizes - chance is ln 4 = 1.386 for Hamblin vs ln 6 = 1.792).
 
 Result: no. Held-out set-size-6 NLL 1.41487 with Hamblin vs 1.41489
 without - a tie to four decimals; parameters essentially unmoved
-(g_T 0.302 -> 0.315, beta_T 4.62 -> 4.60, etas 0.60/0.16 both
+(w_G 0.302 -> 0.315, w_H 4.62 -> 4.60, etas 0.60/0.16 both
 ways). The flip side is the keeper: the no-Hamblin refit, which
 never saw a set-size-4 trial, scores 1.16650 on the held-out
 Hamblin trials vs 1.16355 for the model trained on them - the
@@ -976,7 +976,7 @@ as exactly beta):
   temperature: k, r0 exactly unidentifiable (the flat-window
   theory-definition note now holds exactly, not approximately).
 - caveat: at item centers the two color channels are nearly
-  collinear (g_T -1.13 / g_D +1.14 individually uninterpretable;
+  collinear (w_G -1.13 / g_D +1.14 individually uninterpretable;
   only the combination is identified - the standing two-color
   caveat, stronger under point sampling).
 
@@ -1048,28 +1048,28 @@ probe did NOT fix it (canonical fit identical at 1.39774; exact-
 color gradient still inverted) - the schematic-color scoping is a
 stated limitation, not a solvable calibration.
 
-## The g_T/g_D ridge, confirmed by a clamped refit (Han's request)
+## The w_G/g_D ridge, confirmed by a clamped refit (Han's request)
 
 Under point sensing in two-color displays the two color channels
 are near-complementary singleton indicators, so only the
-combination -g_T*c_T - g_D*c_D (the net singleton weight) is
-identified; the free fit's g_T -1.14 / g_D +1.15 is one arbitrary
-point on that ridge. Check: refit with g_T FROZEN AT 0 (same
+combination -w_G*c_T - g_D*c_D (the net singleton weight) is
+identified; the free fit's w_G -1.14 / g_D +1.15 is one arbitrary
+point on that ridge. Check: refit with w_G FROZEN AT 0 (same
 recipe, split, epochs). Result: held-out NLL 1.39677 vs 1.39774
 free - the clamp is marginally BETTER out of sample while train is
 slightly worse (1.41577 vs 1.41166): the freed dimension was
 fitting training noise. Everything else lands unchanged (g_F 0.51,
 beta 2.18/-0.51, eta 0.60/0.16); g_D becomes +0.237, the single
 net singleton-suppression gain. Recommendation on the table: adopt
-g_T = 0 as a stated identifiability constraint (8 free parameters,
+w_G = 0 as a stated identifiability constraint (8 free parameters,
 all interpretable) - pending Han.
 
 ## Single signed goal-color gain: a three-way tie (Han's request)
 
-The additive one-parameter form - color term g_C * D_T(x), the
+The additive one-parameter form - color term g_C * D_G(x), the
 SIGNED template-axis contrast, no rectifiers in the color pathway -
 fitted with the same recipe/split/epochs: held-out NLL 1.39749 vs
-1.39774 (two rectified gains, free) vs 1.39677 (g_T = 0 clamp).
+1.39774 (two rectified gains, free) vs 1.39677 (w_G = 0 clamp).
 All three within 0.001/saccade (~23 total): a statistical tie, as
 the ridge predicted. The signed fit is the cleanest: g_C = +0.230
 (positive - the goal tilts salience toward the template axis),
@@ -1083,7 +1083,7 @@ two-color paradigms rather than two model parameters).
 ## ADOPTED: single signed goal-color gain g_C (parameterization of
 ## record; Han's call, 2026-09-11)
 
-Full respec landed: Sec. 1's color term is g_C * D_T(x) (signed
+Full respec landed: Sec. 1's color term is g_C * D_G(x) (signed
 template-axis contrast, no rectifiers in the color pathway), eight
 learned parameters, all identified and sign-interpretable; notebook
 Secs. 1/3/7/8/10b rewritten; scripts (display_senses A[ctx,6,2],
@@ -1131,7 +1131,7 @@ record's 1.39750, and the fitted gains equal the record's times
 w(0.5) = 0.965 exactly (0.226/0.498/2.13/-0.49 vs
 0.234/0.516/2.20/-0.51) - the pure reparameterization the scope
 algebra demands. Within first-saccade scope the model's predictive
-content is SIX parameters (g_C, g_F, beta_T, beta_D, eta_T,
+content is SIX parameters (g_C, g_F, w_H, beta_D, eta_H,
 eta_D); the window is definitional: one shared scalar on the
 sensed priorities, absorbed by gain scale. k, r0 stay in the model
 of record because the theory posits an ego-anchored attention
@@ -1145,16 +1145,16 @@ window needs eccentricity variation or peripheral fixations.
 The attention window is REMOVED from the model of record, following
 the exact-tie demonstrations above. The complete model:
 
-  M(x)  = g_C * D_T(x) + g_F * S(x)
-          + sum_j (beta_T h_Tj + beta_D h_Dj) * G(x - x_j)
+  M(x)  = g_C * D_G(x) + g_F * S(x)
+          + sum_j (w_H h_Tj + beta_D h_Dj) * G(x - x_j)
   F_i   = M(x_i)                       (sensed at item centers)
   P(i)  = softmax(F)_i
   h    <- (1 - eta) h + eta e          (leaky accumulators)
 
 Six parameters, every one identified and sign-interpretable
 (values in the greyscale units adopted below): g_C +0.353 (net
-goal-color modulation), g_F +1.39 (goal shape), beta_T +2.13 /
-beta_D -0.49 (history pull/push), eta_T 0.60 / eta_D 0.16
+goal-color modulation), g_F +1.39 (goal shape), w_H +2.13 /
+beta_D -0.49 (history pull/push), eta_H 0.60 / eta_D 0.16
 (recency weights: how much the newest trial counts). G is the
 fixed sigma = 0.03 peak-1 kernel (stated assumption).
 
@@ -1185,7 +1185,7 @@ gone from notebook and pipeline alike.
 
 Why: with the history kernel's peak-1 convention, every weight now
 reads the same way - the priority delivered by a full-strength
-unit of its channel - so g_C, g_F, beta_T, beta_D compare directly
+unit of its channel - so g_C, g_F, w_H, beta_D compare directly
 (g_F ~4x g_C per full-scale pixel; a freshly primed target
 location ~6x a full-scale color pixel). Under the old std units
 the color/shape pair was comparable to each other but not to the
@@ -1242,7 +1242,7 @@ model does not carry.)
 - **9c target-location priming** (Change vs Repeat bars):
   people +34.7%, t(65) = 18.55, p < .001, d_z = 2.28; model
   +39.2%, t(65) = 46.37, d_z = 5.71 (the model slightly
-  over-primes; eta_T = 0.60). The singleton-location panel was
+  over-primes; eta_H = 0.60). The singleton-location panel was
   removed from the notebook (Han's call); its last numbers, for
   the record: people -5.2%, t(65) = -5.70, d_z = 0.70; model
   -3.6%, t(65) = -4.24, d_z = 0.52 - same direction, slightly
@@ -1277,14 +1277,14 @@ seaborn, pingouin (pip-installed into escaping_ball).
 
 The visual-search model now matches the action-agent decomposition:
 
-  M(x)  = alpha_P * P(x) + g_C * C_T(x) + g_F * S_T(x)
-          + sum_j (beta_T h_Tj + beta_D h_Dj) * G(x - x_j)
+  M(x)  = w_S * S(x) + g_C * C_G(x) + g_F * S_G(x)
+          + sum_j (w_H h_Tj + beta_D h_Dj) * G(x - x_j)
   F_i   = M(x_i)                       (sensed at item centers)
   P(i)  = softmax(F)_i
   h    <- (1 - eta) h + eta e          (leaky accumulators)
 
-P(x) was the goal-independent sensory presence/salience field. C_T(x)
-and S_T(x) are target-color and target-shape evidence, so both goal
+S(x) was the goal-independent sensory presence/salience field. C_G(x)
+and S_G(x) are target-color and target-shape evidence, so both goal
 components have the same gain * evidence form. The history field is
 unchanged.
 
@@ -1297,22 +1297,22 @@ Fit recipe: 200 epochs, Adam lr = 0.05, same subject split seed 0,
 dataset/senses.npz with A[ctx, item, field] = P, C_T, S_T. Fitted
 weights_final.json:
 
-  alpha_P -0.4952, g_C +0.3003, g_F +1.4032,
-  beta_T +2.1251, beta_D -0.4762, eta_T 0.6028, eta_D 0.1647
+  w_S -0.4952, g_C +0.3003, g_F +1.4032,
+  w_H +2.1251, beta_D -0.4762, eta_H 0.6028, eta_D 0.1647
 
 Held-out NLL per saccade: 1.39755; train NLL per saccade: 1.41699.
 
 ## Signed target-shape evidence check (2026-09-13)
 
-Han's follow-up: try making S_T(x) range from -1 to +1 like C_T(x),
+Han's follow-up: try making S_G(x) range from -1 to +1 like C_G(x),
 instead of 0 to 1. Implementation: the raw shape-match map is still
 max-normalized, then remapped as S_T = 2*S_raw - 1 in
 build_contexts.py and tutorial_visual_search.ipynb.
 
 Same 200-epoch recipe and split:
 
-  alpha_P -0.2827, g_C +0.3229, g_F +0.6994,
-  beta_T +2.1252, beta_D -0.4762, eta_T 0.6028, eta_D 0.1646
+  w_S -0.2827, g_C +0.3229, g_F +0.6994,
+  w_H +2.1252, beta_D -0.4762, eta_H 0.6028, eta_D 0.1646
 
 Held-out NLL per saccade: 1.39752; train NLL per saccade: 1.41700.
 The difference from the 0-to-1 S_T run is tiny but favorable
@@ -1322,12 +1322,12 @@ contrast is stretched from [0, 1] to [-1, 1].
 
 ## Signed sensory-presence evidence check (2026-09-13)
 
-Next check: also remap P(x) from [0, 1] to [-1, 1], so all three
+Next check: also remap S(x) from [0, 1] to [-1, 1], so all three
 sensed fields P, C_T, and S_T share signed greyscale units. Same
 200-epoch recipe and split:
 
-  alpha_P -0.2398, g_C +0.3022, g_F +0.7014,
-  beta_T +2.1252, beta_D -0.4763, eta_T 0.6028, eta_D 0.1646
+  w_S -0.2398, g_C +0.3022, g_F +0.7014,
+  w_H +2.1252, beta_D -0.4763, eta_H 0.6028, eta_D 0.1646
 
 Held-out NLL per saccade: 1.39755; train NLL per saccade: 1.41699.
 This is effectively tied with the prior variants but slightly worse
@@ -1338,26 +1338,26 @@ offset/contrast degree of freedom.
 ## Transparent-background sensory presence check (2026-09-13)
 
 Han's correction: instead of making the rendered background negative,
-treat it as absent. P(x) is now computed from the foreground mask of
+treat it as absent. S(x) is now computed from the foreground mask of
 the rendered objects: background = 0, object presence is blurred and
 max-normalized to 1. C_T and S_T remain signed [-1, 1].
 
 Same 200-epoch recipe and split:
 
-  alpha_P -6.4372, g_C +0.3754, g_F +0.7291,
-  beta_T +2.1256, beta_D -0.4805, eta_T 0.6034, eta_D 0.1634
+  w_S -6.4372, g_C +0.3754, g_F +0.7291,
+  w_H +2.1256, beta_D -0.4805, eta_H 0.6034, eta_D 0.1634
 
 Held-out NLL per saccade: 1.39686; train NLL per saccade: 1.41264.
 This is the best of the sensory-field variants tried here
 (-0.00066 vs signed S_T with unsigned contrast-P; -0.00069 vs signed
 P). At valid item centers, P ranges only 0.9679 to 1.0, so the large
-negative alpha_P should be read cautiously: much of it is a broad
+negative w_S should be read cautiously: much of it is a broad
 foreground/item penalty, with a small differential sensory component.
 
 ## CURRENT FORM OF RECORD: color-singleton sensory salience (2026-09-13)
 
 Han's correction: raw sensory salience should make the color singleton
-more salient than the homogeneous items. P(x) now ignores the rendered
+more salient than the homogeneous items. S(x) now ignores the rendered
 background and computes item-level color distinctiveness in opponent
 coordinates: each item color is compared with the display's mean item
 color, divided by the canonical green/red singleton full-scale, and
@@ -1367,13 +1367,13 @@ read near 0.2.
 
 S_T remains signed [-1, 1]. Same 200-epoch recipe and split:
 
-  alpha_P -2.3505, g_C -0.6527, g_F +0.7222,
-  beta_T +2.1254, beta_D -0.4795, eta_T 0.6031, eta_D 0.1634
+  w_S -2.3505, g_C -0.6527, g_F +0.7222,
+  w_H +2.1254, beta_D -0.4795, eta_H 0.6031, eta_D 0.1634
 
 Held-out NLL per saccade: 1.39499; train NLL per saccade: 1.41246.
 This is the best sensory-field variant so far (-0.00187 vs
 transparent foreground presence, -0.00253 vs signed S_T with
-contrast-P). Interpretation: alpha_P is now a real bottom-up singleton
+contrast-P). Interpretation: w_S is now a real bottom-up singleton
 salience/suppression term, and the color goal gain shifts because C_T
 no longer has to carry all singleton-related color structure.
 
@@ -1386,10 +1386,10 @@ parameters to four.
 
 **1. Unified goal template.** The separate color and shape goal
 channels (g_C * C_T + g_F * S_T) collapse into ONE signed template
-evidence T_i in [-1, 1]: signed color match and signed shape match,
+evidence G_i in [-1, 1]: signed color match and signed shape match,
 averaged per item. A green circle is strongly positive (target color
 AND target shape), a red square strongly negative, partial matches in
-between; one goal gain g_T scales it. Rationale: enhancement and
+between; one goal gain w_G scales it. Rationale: enhancement and
 suppression are not separately identified in these two-color displays
 anyway (the g_C/g_D ridge on record), and color and shape were
 already carrying one "is this the target" signal - averaging them into
@@ -1402,16 +1402,16 @@ sensed at item centers through the fixed sigma = 0.03 peak-1 kernel
 
 The complete model:
 
-  M(x)  = alpha_P * P(x) + g_T * T(x)
-          + sum_j beta_T h_Tj * G(x - x_j)
+  M(x)  = w_S * S(x) + w_G * G(x)
+          + sum_j w_H h_Tj * G(x - x_j)
   F_i   = M(x_i)                       (sensed at item centers)
   P(i)  = softmax(F)_i
-  h_T  <- (1 - eta_T) h_T + eta_T e_T   (leaky accumulator)
+  H  <- (1 - eta_H) H + eta_H e_H   (leaky accumulator)
 
-P(x) is the goal-independent bottom-up color-singleton salience field
-(unchanged from 2026-09-13); T(x) the unified signed template; the
+S(x) is the goal-independent bottom-up color-singleton salience field
+(unchanged from 2026-09-13); G(x) the unified signed template; the
 history field carries the target trace alone. Four learned
-parameters: alpha_P, g_T, beta_T, eta_T. The attention window stays
+parameters: w_S, w_G, w_H, eta_H. The attention window stays
 outside the fitted model (first-saccade scope, all ring items
 iso-eccentric from center - a shared scalar absorbed by gain scale).
 
@@ -1419,13 +1419,13 @@ Fit (114,232 first saccades; 267 train / 66 held-out subjects,
 seed 0; 300 epochs, Adam lr 0.05; Stilwell low-salience trials
 excluded from fitting, reserved for the 9b test):
 
-  alpha_P -0.050, g_T +1.339, beta_T +2.092, eta_T +0.588
+  w_S -0.050, w_G +1.339, w_H +2.092, eta_H +0.588
 
-- alpha_P near zero and slightly negative: bottom-up color salience
+- w_S near zero and slightly negative: bottom-up color salience
   neither attracts nor strongly suppresses first saccades once
   template and history are in play.
-- g_T positive: the goal draws the eyes toward template-matching items.
-- beta_T / eta_T +2.09 / 0.59: strong, fast-turnover pull toward
+- w_G positive: the goal draws the eyes toward template-matching items.
+- w_H / eta_H +2.09 / 0.59: strong, fast-turnover pull toward
   recent target locations.
 
 Held-out (23,216 saccades, people the model never saw):
@@ -1497,7 +1497,7 @@ weights, regenerate saccades.
 ### The spatial prior across trials (Section 10)
 
 Real trained target memories for one held-out person over a trial
-span: the item-level prior beta_T*h_T tilts toward recently-occupied
+span: the item-level prior w_H*H tilts toward recently-occupied
 target locations before each display appears. Across all held-out
 trials, the prior at the previous target location is +1.376 vs +0.142
 at other locations.

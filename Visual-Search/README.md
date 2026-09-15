@@ -14,16 +14,16 @@ https://osf.io/q27ph/); point `pool_data.py` at their folder.
 ## Model (4 fitted weights)
 
 ```
-F_i = alpha_P*P_i + g_T*T_i + beta_T*h_Ti
+F_i = w_S*S_i + w_G*G_i + w_H*H_i
 P(saccade -> i) = softmax over the current choice set
 ```
 
 | Weight | Meaning | Agent counterpart |
 | --- | --- | --- |
-| alpha_P | goal-independent sensory color-salience gain | sensory/obstacle gain |
-| g_T | unified green-circle template evidence gain | goal gain block |
-| beta_T | target history-field expression weight | history gain |
-| eta_T | target trace accrual rate | memory update rate |
+| w_S | goal-independent sensory color-salience gain | sensory/obstacle gain |
+| w_G | unified green-circle template evidence gain | goal gain block |
+| w_H | target history-field expression weight | history gain |
+| eta_H | target trace accrual rate | memory update rate |
 
 Scope: first saccades only, launched from the display center; positions
 only (no latency); one population-level fit (no individual differences);
