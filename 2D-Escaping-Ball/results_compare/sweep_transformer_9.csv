@@ -1,2 +1,0 @@
-model,num_balls,speed_multiplier,goals_per_min,collisions_per_min
-transformer,10,3.5,65.0,2.5
