@@ -205,6 +205,8 @@ def main():
     parser.add_argument("--deploy_trials", type=int, default=180)
     parser.add_argument("--switch", type=int, default=90)
     parser.add_argument("--num_seeds", type=int, default=10)
+    parser.add_argument("--seed_start", type=int, default=100,
+                        help="first deploy seed; seeds are seed_start..+num_seeds-1")
     parser.add_argument("--block", type=int, default=10)
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--out_dir", default="results_compare",
@@ -242,13 +244,13 @@ def main():
     def run_arm(beta):
         curves = []
         for i in range(args.num_seeds):
-            _, _, drifts = play(model, beta, eta_hat, 100 + i,
+            _, _, drifts = play(model, beta, eta_hat, args.seed_start + i,
                                 args.deploy_trials, args.switch, args)
             first = [d for t, d in enumerate(drifts)
                      if t < args.switch and not math.isnan(d)]
             second = [d for t, d in enumerate(drifts)
                       if t >= args.switch and not math.isnan(d)]
-            print(f"   beta={beta:.3f} seed {100 + i}: biased-half "
+            print(f"   beta={beta:.3f} seed {args.seed_start + i}: biased-half "
                   f"{sum(first)/len(first):+.2f}  unbiased-half "
                   f"{sum(second)/len(second):+.2f} px/step", flush=True)
             curves.append(drifts)
@@ -267,7 +269,7 @@ def main():
             for i, drifts in enumerate(curves):
                 for t, d in enumerate(drifts):
                     if not math.isnan(d):
-                        w.writerow([arm, 100 + i, t, f"{d:.5f}"])
+                        w.writerow([arm, args.seed_start + i, t, f"{d:.5f}"])
     params_path = os.path.join(args.out_dir, "statlearn_params.csv")
     with open(params_path, "w", newline="") as fh:
         w = csv.writer(fh)
