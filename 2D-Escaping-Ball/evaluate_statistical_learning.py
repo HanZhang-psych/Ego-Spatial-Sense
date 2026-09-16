@@ -76,7 +76,9 @@ def sample_goal_trial(rng, biased, width, height,
 def play(model, beta, eta, seed, n_trials, biased_until, args,
          record_rows=False):
     """The checkpoint + grid agent (gated) on the fixation-start task.
-    Returns (goal-free rows, goal-cell sequence, per-trial drift)."""
+    Returns (goal-free rows, goal-cell sequence, per-trial anticipatory
+    offset: the signed horizontal position at goal onset relative to
+    center, in px; negative = leftward)."""
     rng = random.Random(seed)
     random.seed(seed)
     width, height = args.width, args.height
@@ -129,7 +131,9 @@ def play(model, beta, eta, seed, n_trials, biased_until, args,
                 if record_rows and t % args.record_every == 0:
                     rows.append((trial, list(pscan), list(d), px, py, fx, fy))
                 move(fx, fy)
-            drifts[trial] = (x0 - player.x) / args.goal_free_steps  # leftward
+            drifts[trial] = player.x - x0  # signed horizontal offset at goal
+            #                                onset, relative to center (px);
+            #                                negative = leftward
         goal = sample_goal_trial(rng, trial < biased_until, width, height,
                                  args.ecc_min, args.ecc_max, args.p_high)
         for t in range(args.goal_timeout):
@@ -227,9 +231,9 @@ def main():
                                    args.random_seed, args.demo_trials,
                                    args.demo_trials, args, record_rows=True)
     td = [d for d in tdrifts if not math.isnan(d)]
-    teacher_drift = sum(td) / len(td)
-    print(f"   {len(rows)} goal-free rows; teacher leftward drift "
-          f"{teacher_drift:+.2f} px/step", flush=True)
+    teacher_offset = sum(td) / len(td)
+    print(f"   {len(rows)} goal-free rows; teacher anticipatory offset "
+          f"{teacher_offset:+.1f} px (negative = left)", flush=True)
 
     print("2. FIT (beta_H, eta), policy frozen...", flush=True)
     beta_hat, eta_hat, mse = fit_history_params(model, rows, goal_seq, args)
@@ -251,8 +255,8 @@ def main():
             second = [d for t, d in enumerate(drifts)
                       if t >= args.switch and not math.isnan(d)]
             print(f"   beta={beta:.3f} seed {args.seed_start + i}: biased-half "
-                  f"{sum(first)/len(first):+.2f}  unbiased-half "
-                  f"{sum(second)/len(second):+.2f} px/step", flush=True)
+                  f"{sum(first)/len(first):+.1f}  unbiased-half "
+                  f"{sum(second)/len(second):+.1f} px", flush=True)
             curves.append(drifts)
         return curves
 
@@ -264,7 +268,7 @@ def main():
     drift_path = os.path.join(args.out_dir, "statlearn_drift.csv")
     with open(drift_path, "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["arm", "seed", "trial", "drift"])
+        w.writerow(["arm", "seed", "trial", "offset"])
         for arm, curves in [("fitted", fitted), ("control", control)]:
             for i, drifts in enumerate(curves):
                 for t, d in enumerate(drifts):
@@ -274,10 +278,10 @@ def main():
     with open(params_path, "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["beta_star", "eta_star", "beta_hat", "eta_hat", "fit_mse",
-                    "teacher_drift", "switch", "deploy_trials", "num_seeds",
+                    "teacher_offset", "switch", "deploy_trials", "num_seeds",
                     "block"])
         w.writerow([args.beta_star, args.eta_star, f"{beta_hat:.5f}",
-                    f"{eta_hat:.5f}", f"{mse:.6f}", f"{teacher_drift:.5f}",
+                    f"{eta_hat:.5f}", f"{mse:.6f}", f"{teacher_offset:.5f}",
                     args.switch, args.deploy_trials, args.num_seeds, args.block])
     print(f"   wrote {drift_path} and {params_path}", flush=True)
 
